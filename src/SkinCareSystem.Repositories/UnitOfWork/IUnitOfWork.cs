@@ -1,12 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Storage;
+using SkinCareSystem;
+using SkinCareSystem.Repositories.IRepositores;
 
 namespace SkinCareSystem.Repositories.UnitOfWork
 {
-    public interface IUnitOfWork
+    public interface IUnitOfWork : IDisposable
     {
-        
+        Task<IDbContextTransaction> BeginTransactionAsync();
+        IUserRepository UserRepository { get; }
+        Task<int> SaveAsync();
+        int Save();
     }
 }
