@@ -1,0 +1,42 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36408.4
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinCareSystem.Common", "src/SkinCareSystem.Common/SkinCareSystem.Common.csproj", "{D6C040C1-2B6C-4601-951C-F5F042993D2B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinCareSystem.Repositories", "src/SkinCareSystem.Repositories/SkinCareSystem.Repositories.csproj", "{6740F777-3879-4607-BC11-0D55F704AB46}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinCareSystem.Services", "src/SkinCareSystem.Services/SkinCareSystem.Services.csproj", "{CF174990-065D-45EB-AD5C-BC4D98264B04}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinCareSystem.APIService", "src/SkinCareSystem.APIService/SkinCareSystem.APIService.csproj", "{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D6C040C1-2B6C-4601-951C-F5F042993D2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6C040C1-2B6C-4601-951C-F5F042993D2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6C040C1-2B6C-4601-951C-F5F042993D2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6C040C1-2B6C-4601-951C-F5F042993D2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6740F777-3879-4607-BC11-0D55F704AB46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6740F777-3879-4607-BC11-0D55F704AB46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6740F777-3879-4607-BC11-0D55F704AB46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6740F777-3879-4607-BC11-0D55F704AB46}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF174990-065D-45EB-AD5C-BC4D98264B04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF174990-065D-45EB-AD5C-BC4D98264B04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF174990-065D-45EB-AD5C-BC4D98264B04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF174990-065D-45EB-AD5C-BC4D98264B04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-1234-56789ABCDEF0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {969B73F3-662F-4067-8E7C-27F31903B94F}
+	EndGlobalSection
+EndGlobal
