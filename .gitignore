@@ -365,9 +365,11 @@ Log/
 .LSOverride
 
 # Config files with sensitive information
+appsettings.json
 appsettings.*.json
-!appsettings.json
-!appsettings.Example.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
 
 # Generated XML documentation files
 *.xml
