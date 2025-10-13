@@ -2,14 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using SkinCareSystem.Common.DTOs.UserDTOs;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
-using SkinCareSystem.Repositories;
-using SkinCareSystem.Repositories.Base;
-using SkinCareSystem.Repositories.IRepositores;
-using SkinCareSystem.Repositories.Models;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.InternalServices.IServices;
+using SkinCareSystem.Services.Mapping;
 
 namespace SkinCareSystem.Services.InternalServices.Services
 {
@@ -33,14 +31,21 @@ namespace SkinCareSystem.Services.InternalServices.Services
                     return new ServiceResult
                     {
                         Status = Const.WARNING_NO_DATA_CODE,
-                        Message = Const.WARNING_DATA_EXISTED_MSG
+                        Message = Const.WARNING_NO_DATA_MSG
                     };
                 }
+
+                var userDtos = users
+                    .Select(user => user.ToUserDto())
+                    .Where(dto => dto != null)
+                    .Cast<UserDto>()
+                    .ToList();
+
                 return new ServiceResult
                 {
                     Status = Const.SUCCESS_READ_CODE,
                     Message = Const.SUCCESS_READ_MSG,
-                    Data = users.ToList()
+                    Data = userDtos
                 };
             }
             catch (Exception ex)
