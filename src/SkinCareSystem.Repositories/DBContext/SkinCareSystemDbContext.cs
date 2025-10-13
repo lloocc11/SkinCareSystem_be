@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Repositories.DBContext;
@@ -61,26 +60,6 @@ public partial class SkinCareSystemDbContext : DbContext
 
     public virtual DbSet<UserSymptom> UserSymptoms { get; set; }
 
-    public static string GetConnectionString(string connectionStringName)
-{
-    // Kiểm tra biến môi trường trước
-    string envConnectionString = Environment.GetEnvironmentVariable($"ConnectionStrings__{connectionStringName}");
-    if (!string.IsNullOrEmpty(envConnectionString))
-    {
-        return envConnectionString;
-    }
-
-    // Nếu không có biến môi trường, đọc từ appsettings
-    var config = new ConfigurationBuilder()
-        .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-        .AddJsonFile("appsettings.json", optional: true)
-        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development"}.json", optional: true)
-        .AddEnvironmentVariables() // Thêm biến môi trường vào cấu hình
-        .Build();
-
-    string connectionString = config.GetConnectionString(connectionStringName);
-    return connectionString;
-}
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder

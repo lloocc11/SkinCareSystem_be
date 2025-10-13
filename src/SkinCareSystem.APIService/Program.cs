@@ -13,9 +13,10 @@ using SkinCareSystem.Services.InternalServices.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add DbContext
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                      ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<SkinCareSystemDbContext>(options =>
 {
-    var connectionString = SkinCareSystemDbContext.GetConnectionString("DefaultConnection");
     options.UseNpgsql(connectionString);
 });
 
