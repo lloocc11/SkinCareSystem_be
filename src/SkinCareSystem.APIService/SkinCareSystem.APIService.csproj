@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>SkinCareSystem.APIService-1f3d478e-1c6f-4b57-9f62-1ab4f0d3a7b8</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
