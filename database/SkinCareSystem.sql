@@ -4,28 +4,28 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Drop all tables in correct order (reverse of dependencies)
-DROP TABLE IF EXISTS ChatMessages CASCADE;
-DROP TABLE IF EXISTS ChatSessions CASCADE;
-DROP TABLE IF EXISTS ConsentRecords CASCADE;
-DROP TABLE IF EXISTS RuleConditions CASCADE;
-DROP TABLE IF EXISTS Rules CASCADE;
-DROP TABLE IF EXISTS Questions CASCADE;
-DROP TABLE IF EXISTS Symptoms CASCADE;
-DROP TABLE IF EXISTS RoutineProgress CASCADE;
-DROP TABLE IF EXISTS RoutineInstances CASCADE;
-DROP TABLE IF EXISTS Feedback CASCADE;
-DROP TABLE IF EXISTS RoutineSteps CASCADE;
-DROP TABLE IF EXISTS Routines CASCADE;
-DROP TABLE IF EXISTS AIResponses CASCADE;
-DROP TABLE IF EXISTS QueryMatches CASCADE;
-DROP TABLE IF EXISTS UserQueries CASCADE;
-DROP TABLE IF EXISTS DocumentChunks CASCADE;
-DROP TABLE IF EXISTS MedicalDocuments CASCADE;
-DROP TABLE IF EXISTS AIAnalysis CASCADE;
-DROP TABLE IF EXISTS UserSymptoms CASCADE;
-DROP TABLE IF EXISTS UserAnswers CASCADE;
-DROP TABLE IF EXISTS Users CASCADE;
-DROP TABLE IF EXISTS Roles CASCADE;
+DROP TABLE IF EXISTS "ChatMessages" CASCADE;
+DROP TABLE IF EXISTS "ChatSessions" CASCADE;
+DROP TABLE IF EXISTS "ConsentRecords" CASCADE;
+DROP TABLE IF EXISTS "RuleConditions" CASCADE;
+DROP TABLE IF EXISTS "Rules" CASCADE;
+DROP TABLE IF EXISTS "Questions" CASCADE;
+DROP TABLE IF EXISTS "Symptoms" CASCADE;
+DROP TABLE IF EXISTS "RoutineProgress" CASCADE;
+DROP TABLE IF EXISTS "RoutineInstances" CASCADE;
+DROP TABLE IF EXISTS "Feedback" CASCADE;
+DROP TABLE IF EXISTS "RoutineSteps" CASCADE;
+DROP TABLE IF EXISTS "Routines" CASCADE;
+DROP TABLE IF EXISTS "AIResponses" CASCADE;
+DROP TABLE IF EXISTS "QueryMatches" CASCADE;
+DROP TABLE IF EXISTS "UserQueries" CASCADE;
+DROP TABLE IF EXISTS "DocumentChunks" CASCADE;
+DROP TABLE IF EXISTS "MedicalDocuments" CASCADE;
+DROP TABLE IF EXISTS "AIAnalysis" CASCADE;
+DROP TABLE IF EXISTS "UserSymptoms" CASCADE;
+DROP TABLE IF EXISTS "UserAnswers" CASCADE;
+DROP TABLE IF EXISTS "Users" CASCADE;
+DROP TABLE IF EXISTS "Roles" CASCADE;
 
 -- Create function to auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -53,7 +53,7 @@ CREATE TABLE "Users" (
   "user_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   "full_name" varchar NOT NULL,
   "email" varchar UNIQUE NOT NULL,
-  "password_hash" varchar NOT NULL,
+  "google_id" varchar UNIQUE NOT NULL,
   "role_id" uuid NOT NULL,
   "skin_type" varchar,
   "date_of_birth" date,
@@ -415,9 +415,11 @@ INSERT INTO "Roles" (role_id, name, description, status) VALUES
 (uuid_generate_v4(), 'specialist', 'Skincare specialist', 'active');
 
 -- Insert Sample User
-INSERT INTO "Users" (user_id, full_name, email, password_hash, role_id, skin_type, status) VALUES
-(uuid_generate_v4(), 'Test User', 'test@example.com', '$2a$10$abcdefghijklmnopqrstuv', 
- (SELECT role_id FROM "Roles" WHERE name = 'user'), 'combination', 'active');
+INSERT INTO "Users" (user_id, full_name, email, google_id, role_id, skin_type, status) VALUES
+(uuid_generate_v4(), 'Test User', 'test@example.com', 'sample-google-id-1234567890', 
+ (SELECT role_id FROM "Roles" WHERE name = 'user'), 'combination', 'active'),
+(uuid_generate_v4(), 'Admin User', 'admin@example.com', 'sample-google-id-admin', 
+ (SELECT role_id FROM "Roles" WHERE name = 'admin'), NULL, 'active');
 
 -- Insert Sample Symptoms
 INSERT INTO "Symptoms" (symptom_id, name, description) VALUES
