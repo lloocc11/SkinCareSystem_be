@@ -1,7 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Services.InternalServices.IServices;
@@ -10,6 +9,7 @@ namespace SkinCareSystem.APIService.Controllers.UserController
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "admin")]
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -20,10 +20,12 @@ namespace SkinCareSystem.APIService.Controllers.UserController
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _userService.GetAllUsers();
+            var result = await _userService.GetUsersAsync(pageNumber, pageSize);
             return result.Status switch
             {
                 Const.SUCCESS_READ_CODE => Ok(new { Data = result.Data, result.Message }),
