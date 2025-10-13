@@ -8,6 +8,6 @@ namespace SkinCareSystem.Services.InternalServices.IServices
 {
     public interface IUserService
     {
-        Task<IServiceResult> GetAllUsers();
+        Task<IServiceResult> GetUsersAsync(int pageNumber, int pageSize);
     }
 }
