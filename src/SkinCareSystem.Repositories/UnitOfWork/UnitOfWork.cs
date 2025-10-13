@@ -1,12 +1,8 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Storage;
-using SkinCareSystem.Repositories;
 using SkinCareSystem.Repositories.DBContext;
-using SkinCareSystem.Repositories.Models;
-using SkinCareSystem.Repositories.IRepositores;
+using SkinCareSystem.Repositories.IRepositories;
 using SkinCareSystem.Repositories.Repositories;
 
 namespace SkinCareSystem.Repositories.UnitOfWork

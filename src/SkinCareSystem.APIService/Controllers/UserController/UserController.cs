@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Services.InternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers.UserController
@@ -23,11 +24,13 @@ namespace SkinCareSystem.APIService.Controllers.UserController
         public async Task<IActionResult> Get()
         {
             var result = await _userService.GetAllUsers();
-            if (result.Data == null)
+            return result.Status switch
             {
-                return NotFound(result.Message);
-            }
-            return Ok(new { result.Data, result.Message });
+                Const.SUCCESS_READ_CODE => Ok(new { Data = result.Data, result.Message }),
+                Const.WARNING_NO_DATA_CODE => NotFound(new { result.Message }),
+                Const.ERROR_EXCEPTION => StatusCode(StatusCodes.Status500InternalServerError, new { result.Message }),
+                _ => BadRequest(new { result.Message })
+            };
         }
     }
 }
