@@ -11,7 +11,7 @@ public partial class User
 
     public string Email { get; set; } = null!;
 
-    public string PasswordHash { get; set; } = null!;
+    public string GoogleId { get; set; } = null!;
 
     public Guid RoleId { get; set; }
 
