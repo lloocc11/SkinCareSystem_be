@@ -1,6 +1,7 @@
+using System;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Storage;
-using SkinCareSystem;
-using SkinCareSystem.Repositories.IRepositores;
+using SkinCareSystem.Repositories.IRepositories;
 
 namespace SkinCareSystem.Repositories.UnitOfWork
 {
