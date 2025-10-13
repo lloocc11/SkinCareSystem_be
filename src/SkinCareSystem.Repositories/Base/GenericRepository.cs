@@ -1,27 +1,19 @@
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using SkinCareSystem.Repositories.DBContext;
-using SkinCareSystem.Repositories.Models;
-using SkinCareSystem.Repositories.Base;
 
 namespace SkinCareSystem.Repositories.Base
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
-        protected SkinCareSystemDbContext _context;
-
-        public GenericRepository()
-        {
-            _context ??= new SkinCareSystemDbContext();
-        }
+        protected readonly SkinCareSystemDbContext _context;
 
         public GenericRepository(SkinCareSystemDbContext context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
         public List<T> GetAll()
@@ -34,46 +26,35 @@ namespace SkinCareSystem.Repositories.Base
         }
         public void Create(T entity)
         {
-            _context.Add(entity);
-            _context.SaveChanges();
+            _context.Set<T>().Add(entity);
         }
 
-        public async Task<int> CreateAsync(T entity)
+        public async Task CreateAsync(T entity)
         {
-            _context.Add(entity);
-
-            return await _context.SaveChangesAsync();
+            await _context.Set<T>().AddAsync(entity);
         }
 
         public void Update(T entity)
         {
             var tracker = _context.Attach(entity);
             tracker.State = EntityState.Modified;
-            _context.SaveChanges();
         }
 
-        public async Task<int> UpdateAsync(T entity)
+        public Task UpdateAsync(T entity)
         {
-            var tracker = _context.Attach(entity);
-            tracker.State = EntityState.Modified;
-
-            return await _context.SaveChangesAsync();
+            Update(entity);
+            return Task.CompletedTask;
         }
         
-        public bool Remove(T entity)
+        public void Remove(T entity)
         {
             _context.Remove(entity);
-            _context.SaveChanges();
-
-            return true;
         }
 
-        public async Task<bool> RemoveAsync(T entity)
+        public Task RemoveAsync(T entity)
         {
-            _context.Remove(entity);
-            await _context.SaveChangesAsync();
-
-            return true;
+            Remove(entity);
+            return Task.CompletedTask;
         }
 
         public T GetById(int id)
@@ -87,7 +68,7 @@ namespace SkinCareSystem.Repositories.Base
             return entity;
         }
 
-        public async Task<T> GetByIdAsync(int id)
+        public async Task<T?> GetByIdAsync(int id)
         {
             var entity = await _context.Set<T>().FindAsync(id);
             if (entity != null)
@@ -109,7 +90,7 @@ namespace SkinCareSystem.Repositories.Base
             return entity;
         }
 
-        public async Task<T> GetByIdAsync(string code)
+        public async Task<T?> GetByIdAsync(string code)
         {
             var entity = await _context.Set<T>().FindAsync(code);
             if (entity != null)
@@ -131,7 +112,7 @@ namespace SkinCareSystem.Repositories.Base
             return entity;
         }
 
-        public async Task<T> GetByIdAsync(Guid code)
+        public async Task<T?> GetByIdAsync(Guid code)
         {
             var entity = await _context.Set<T>().FindAsync(code);
             if (entity != null)
@@ -141,36 +122,6 @@ namespace SkinCareSystem.Repositories.Base
 
             return entity;
         }
-
-        #region Separating asigned entity and save operators        
-
-        public void PrepareCreate(T entity)
-        {
-            _context.Add(entity);
-        }
-
-        public void PrepareUpdate(T entity)
-        {
-            var tracker = _context.Attach(entity);
-            tracker.State = EntityState.Modified;
-        }
-
-        public void PrepareRemove(T entity)
-        {
-            _context.Remove(entity);
-        }
-
-        public int Save()
-        {
-            return _context.SaveChanges();
-        }
-
-        public async Task<int> SaveAsync()
-        {
-            return await _context.SaveChangesAsync();
-        }
-
-        #endregion Separating asign entity and save operators
 
         public IQueryable<T> GetAllQueryable()
         {
