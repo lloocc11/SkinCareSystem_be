@@ -60,6 +60,9 @@ public partial class SkinCareSystemDbContext : DbContext
 
     public virtual DbSet<UserSymptom> UserSymptoms { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        => optionsBuilder.UseNpgsql("Name=ConnectionStrings:DefaultConnection");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -644,6 +647,8 @@ public partial class SkinCareSystemDbContext : DbContext
 
             entity.HasIndex(e => e.Email, "Users_email_key").IsUnique();
 
+            entity.HasIndex(e => e.GoogleId, "Users_google_id_key").IsUnique();
+
             entity.HasIndex(e => e.Email, "idx_users_email").IsUnique();
 
             entity.HasIndex(e => e.RoleId, "idx_users_role_id");
@@ -664,9 +669,9 @@ public partial class SkinCareSystemDbContext : DbContext
             entity.Property(e => e.FullName)
                 .HasColumnType("character varying")
                 .HasColumnName("full_name");
-            entity.Property(e => e.PasswordHash)
+            entity.Property(e => e.GoogleId)
                 .HasColumnType("character varying")
-                .HasColumnName("password_hash");
+                .HasColumnName("google_id");
             entity.Property(e => e.RoleId).HasColumnName("role_id");
             entity.Property(e => e.SkinType)
                 .HasColumnType("character varying")

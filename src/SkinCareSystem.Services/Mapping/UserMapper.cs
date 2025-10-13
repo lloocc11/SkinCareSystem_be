@@ -17,6 +17,8 @@ namespace SkinCareSystem.Services.Mapping
                 UserId = user.UserId,
                 FullName = user.FullName,
                 Email = user.Email,
+                GoogleId = user.GoogleId,
+                RoleName = user.Role?.Name ?? string.Empty,
                 SkinType = user.SkinType,
                 RoleId = user.RoleId,
                 Status = user.Status,
