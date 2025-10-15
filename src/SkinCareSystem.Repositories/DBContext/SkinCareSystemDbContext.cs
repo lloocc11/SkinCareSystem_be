@@ -194,10 +194,6 @@ public partial class SkinCareSystemDbContext : DbContext
             entity.Property(e => e.Title)
                 .HasColumnType("character varying")
                 .HasColumnName("title");
-            entity.Property(e => e.Status)
-                .HasDefaultValue("active")
-                .HasColumnType("character varying")
-                .HasColumnName("status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("timestamp without time zone")

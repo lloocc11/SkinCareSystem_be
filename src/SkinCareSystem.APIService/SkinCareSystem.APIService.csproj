@@ -25,4 +25,9 @@
     <ProjectReference Include="..\SkinCareSystem.Common\SkinCareSystem.Common.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SkinCareSystem.Services\SkinCareSystem.Services.csproj" />
+    <ProjectReference Include="..\SkinCareSystem.Common\SkinCareSystem.Common.csproj" />
+  </ItemGroup>
+
 </Project>
