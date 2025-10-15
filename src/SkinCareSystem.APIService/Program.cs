@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Swashbuckle.AspNetCore.Annotations;
 using SkinCareSystem.Repositories.DBContext;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.ExternalServices.IServices;
@@ -33,6 +34,11 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<IChatSessionService, ChatSessionService>();
+builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
+builder.Services.AddScoped<IAIAnalysisService, AIAnalysisService>();
+builder.Services.AddScoped<IAIResponseService, AIResponseService>();
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JWT"));
 
 var jwtSettings = builder.Configuration.GetSection("JWT").Get<JwtSettings>()
@@ -112,6 +118,17 @@ builder.Services.AddSwaggerGen(c=>
             Array.Empty<string>()
         }
     });
+    
+    // Enable annotations for better Swagger documentation
+    c.EnableAnnotations();
+    
+    // Include XML comments if file exists
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
 });
 builder.Services.AddCors(options =>
 {

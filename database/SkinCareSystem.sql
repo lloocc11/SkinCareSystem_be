@@ -251,6 +251,7 @@ CREATE TABLE "ChatSessions" (
   "session_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   "user_id" uuid NOT NULL,
   "title" varchar,
+  "status" varchar DEFAULT 'active',
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE

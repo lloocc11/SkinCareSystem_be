@@ -11,6 +11,12 @@ namespace SkinCareSystem.Repositories.UnitOfWork
     {
         private readonly SkinCareSystemDbContext _context;
         private IUserRepository? userRepository;
+        private IRoleRepository? roleRepository;
+        private IChatSessionRepository? chatSessionRepository;
+        private IChatMessageRepository? chatMessageRepository;
+        private IAIAnalysisRepository? aiAnalysisRepository;
+        private IAIResponseRepository? aiResponseRepository;
+        private IUserQueryRepository? userQueryRepository;
         
         public UnitOfWork(SkinCareSystemDbContext context)
         {
@@ -27,6 +33,54 @@ namespace SkinCareSystem.Repositories.UnitOfWork
             get
             {
                 return userRepository ??= new UserRepository(_context);
+            }
+        }
+
+        public IRoleRepository RoleRepository
+        {
+            get
+            {
+                return roleRepository ??= new RoleRepository(_context);
+            }
+        }
+
+        public IChatSessionRepository ChatSessionRepository
+        {
+            get
+            {
+                return chatSessionRepository ??= new ChatSessionRepository(_context);
+            }
+        }
+
+        public IChatMessageRepository ChatMessageRepository
+        {
+            get
+            {
+                return chatMessageRepository ??= new ChatMessageRepository(_context);
+            }
+        }
+
+        public IAIAnalysisRepository AIAnalysisRepository
+        {
+            get
+            {
+                return aiAnalysisRepository ??= new AIAnalysisRepository(_context);
+            }
+        }
+
+        public IAIResponseRepository AIResponseRepository
+        {
+            get
+            {
+                return aiResponseRepository ??= new AIResponseRepository(_context);
+            }
+        }
+
+        public IUserQueryRepository UserQueryRepository
+        {
+            get
+            {
+                return userQueryRepository ??= new UserQueryRepository(_context);
             }
         }
 
