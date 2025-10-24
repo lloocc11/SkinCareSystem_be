@@ -17,6 +17,20 @@ namespace SkinCareSystem.Repositories.UnitOfWork
         private IAIAnalysisRepository? aiAnalysisRepository;
         private IAIResponseRepository? aiResponseRepository;
         private IUserQueryRepository? userQueryRepository;
+        private IRoutineRepository? routineRepository;
+        private IRoutineStepRepository? routineStepRepository;
+        private IRoutineInstanceRepository? routineInstanceRepository;
+        private IRoutineProgressRepository? routineProgressRepository;
+        private IFeedbackRepository? feedbackRepository;
+        private IRuleRepository? ruleRepository;
+        private IRuleConditionRepository? ruleConditionRepository;
+        private ISymptomRepository? symptomRepository;
+        private IUserSymptomRepository? userSymptomRepository;
+        private IQuestionRepository? questionRepository;
+        private IUserAnswerRepository? userAnswerRepository;
+        private IMedicalDocumentRepository? medicalDocumentRepository;
+        private IDocumentChunkRepository? documentChunkRepository;
+        private IConsentRecordRepository? consentRecordRepository;
         
         public UnitOfWork(SkinCareSystemDbContext context)
         {
@@ -81,6 +95,118 @@ namespace SkinCareSystem.Repositories.UnitOfWork
             get
             {
                 return userQueryRepository ??= new UserQueryRepository(_context);
+            }
+        }
+
+        public IRoutineRepository RoutineRepository
+        {
+            get
+            {
+                return routineRepository ??= new RoutineRepository(_context);
+            }
+        }
+
+        public IRoutineStepRepository RoutineStepRepository
+        {
+            get
+            {
+                return routineStepRepository ??= new RoutineStepRepository(_context);
+            }
+        }
+
+        public IRoutineInstanceRepository RoutineInstanceRepository
+        {
+            get
+            {
+                return routineInstanceRepository ??= new RoutineInstanceRepository(_context);
+            }
+        }
+
+        public IRoutineProgressRepository RoutineProgressRepository
+        {
+            get
+            {
+                return routineProgressRepository ??= new RoutineProgressRepository(_context);
+            }
+        }
+
+        public IFeedbackRepository FeedbackRepository
+        {
+            get
+            {
+                return feedbackRepository ??= new FeedbackRepository(_context);
+            }
+        }
+
+        public IRuleRepository RuleRepository
+        {
+            get
+            {
+                return ruleRepository ??= new RuleRepository(_context);
+            }
+        }
+
+        public IRuleConditionRepository RuleConditionRepository
+        {
+            get
+            {
+                return ruleConditionRepository ??= new RuleConditionRepository(_context);
+            }
+        }
+
+        public ISymptomRepository SymptomRepository
+        {
+            get
+            {
+                return symptomRepository ??= new SymptomRepository(_context);
+            }
+        }
+
+        public IUserSymptomRepository UserSymptomRepository
+        {
+            get
+            {
+                return userSymptomRepository ??= new UserSymptomRepository(_context);
+            }
+        }
+
+        public IQuestionRepository Questions
+        {
+            get
+            {
+                return questionRepository ??= new QuestionRepository(_context);
+            }
+        }
+
+        public IUserAnswerRepository UserAnswers
+        {
+            get
+            {
+                return userAnswerRepository ??= new UserAnswerRepository(_context);
+            }
+        }
+
+        public IMedicalDocumentRepository MedicalDocuments
+        {
+            get
+            {
+                return medicalDocumentRepository ??= new MedicalDocumentRepository(_context);
+            }
+        }
+
+        public IDocumentChunkRepository DocumentChunks
+        {
+            get
+            {
+                return documentChunkRepository ??= new DocumentChunkRepository(_context);
+            }
+        }
+
+        public IConsentRecordRepository ConsentRecords
+        {
+            get
+            {
+                return consentRecordRepository ??= new ConsentRecordRepository(_context);
             }
         }
 

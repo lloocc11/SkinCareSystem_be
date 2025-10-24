@@ -45,52 +45,82 @@ public class GoogleAuthService : IGoogleAuthService
                 };
             }
 
-            // 3. Check if user exists by Google ID
-            var existingUser = await _unitOfWork.UserRepository.GetByGoogleIdAsync(googleId);
+            // 3. Normalize input
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+            var normalizedGoogleId = googleId.Trim();
+
+            // 4. Check if user exists by Google ID
+            var existingUser = await _unitOfWork.UserRepository.GetByGoogleIdAsync(normalizedGoogleId);
 
             User user;
             bool isNewUser = false;
 
             if (existingUser != null)
             {
-                // User exists - update last login
+                // Existing user - login scenario
                 user = existingUser;
-                if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+                
+                // Check if user is active
+                if (user.Status?.ToLower() != "active")
                 {
-                    user.Email = email;
+                    return new ServiceResult
+                    {
+                        Status = Const.UNAUTHORIZED_ACCESS_CODE,
+                        Message = "Account is inactive. Please contact support.",
+                        Data = null
+                    };
                 }
 
+                // Update email if changed
+                if (!string.Equals(user.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    user.Email = normalizedEmail;
+                }
+
+                // Update full name if changed
                 if (!string.IsNullOrWhiteSpace(fullName) && !string.Equals(user.FullName, fullName, StringComparison.Ordinal))
                 {
                     user.FullName = fullName;
                 }
 
-                user.UpdatedAt = DateTime.Now;
+                user.UpdatedAt = DateTime.UtcNow;
                 await _unitOfWork.UserRepository.UpdateAsync(user);
+                
+                _logger.LogInformation("Existing user logged in: {UserId}, Email: {Email}", user.UserId, user.Email);
             }
             else
             {
+                // New user - registration scenario
                 // Check if email already exists (registered with different method)
-                var emailUser = await _unitOfWork.UserRepository.GetByEmailAsync(email);
+                var emailUser = await _unitOfWork.UserRepository.GetByEmailAsync(normalizedEmail);
                 if (emailUser != null)
                 {
+                    // Email exists but different Google account
+                    _logger.LogWarning("Email {Email} already registered with different account", normalizedEmail);
                     return new ServiceResult
                     {
                         Status = Const.WARNING_DATA_EXISTED_CODE,
-                        Message = Const.ERROR_EMAIL_EXISTS_MSG,
+                        Message = "This email is already registered with another account. Please use a different email or login method.",
                         Data = null
                     };
                 }
 
-                // Get default "user" role
-                var userRole = await _unitOfWork.RoleRepository.GetRoleByNameAsync("user");
+                // Check if this email should be admin (from environment variable)
+                var adminEmail = Environment.GetEnvironmentVariable("ADMIN_EMAIL");
+                var shouldBeAdmin = !string.IsNullOrWhiteSpace(adminEmail) && 
+                                   string.Equals(normalizedEmail, adminEmail.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase);
+
+                // Get appropriate role
+                var roleName = shouldBeAdmin ? "admin" : "user";
+                var userRole = await _unitOfWork.RoleRepository.GetRoleByNameAsync(roleName);
+                
                 if (userRole == null)
                 {
-                    _logger.LogError("Default 'user' role not found in database");
+                    _logger.LogError("{RoleName} role not found in database", roleName);
                     return new ServiceResult
                     {
                         Status = Const.ERROR_EXCEPTION,
-                        Message = "System configuration error: default role not found",
+                        Message = $"System configuration error: {roleName} role not found",
                         Data = null
                     };
                 }
@@ -99,17 +129,24 @@ public class GoogleAuthService : IGoogleAuthService
                 user = new User
                 {
                     UserId = Guid.NewGuid(),
-                    FullName = string.IsNullOrWhiteSpace(fullName) ? email : fullName,
-                    Email = email,
-                    GoogleId = googleId,
+                    FullName = string.IsNullOrWhiteSpace(fullName) ? normalizedEmail : fullName.Trim(),
+                    Email = normalizedEmail,
+                    GoogleId = normalizedGoogleId,
                     RoleId = userRole.RoleId,
                     Status = "active",
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 };
+
+                if (shouldBeAdmin)
+                {
+                    _logger.LogInformation("Creating admin user via Google: {Email}", user.Email);
+                }
 
                 await _unitOfWork.UserRepository.CreateAsync(user);
                 isNewUser = true;
+                
+                _logger.LogInformation("New user registered via Google: {UserId}, Email: {Email}", user.UserId, user.Email);
             }
 
             await _unitOfWork.SaveAsync();
