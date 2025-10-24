@@ -12,6 +12,9 @@ namespace SkinCareSystem.APIService.Controllers
 {
     [Route("api/users")]
     [Authorize]
+    /// <summary>
+    /// Controller for managing user operations.
+    /// </summary>
     public class UsersController : BaseApiController
     {
         private readonly IUserService _userService;
@@ -20,7 +23,9 @@ namespace SkinCareSystem.APIService.Controllers
         {
             _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         }
-
+        /// <summary>
+        /// GET /api/users - Get a paginated list of users (admin only)
+        /// </summary>
         [HttpGet]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
@@ -28,7 +33,9 @@ namespace SkinCareSystem.APIService.Controllers
             var result = await _userService.GetUsersAsync(pageNumber, pageSize);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// GET /api/users/{id} - Get user by ID (admin only)
+        /// </summary>
         [HttpGet("{id:guid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetById(Guid id)
@@ -36,7 +43,9 @@ namespace SkinCareSystem.APIService.Controllers
             var result = await _userService.GetUserByIdAsync(id);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// GET /api/users/me - Get current authenticated user's details
+        /// </summary>
         [HttpGet("me")]
         public async Task<IActionResult> GetMe()
         {
@@ -53,7 +62,9 @@ namespace SkinCareSystem.APIService.Controllers
             var result = await _userService.GetUserByIdAsync(userId);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// POST /api/users - Create a new user (admin only)
+        /// </summary>
         [HttpPost]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Create([FromBody] UserCreateDto dto)

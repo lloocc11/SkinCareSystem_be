@@ -9,6 +9,9 @@ using SkinCareSystem.Services.InternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers
 {
+    /// <summary>
+    /// Controller for managing AI Analysis operations.
+    /// </summary>
     [Route("api/ai/analysis")]
     [Authorize]
     public class AIAnalysisController : BaseApiController
@@ -19,7 +22,11 @@ namespace SkinCareSystem.APIService.Controllers
         {
             _analysisService = analysisService ?? throw new ArgumentNullException(nameof(analysisService));
         }
-
+        /// <summary>
+        /// POST /api/ai/analysis - Create a new AI analysis record
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] AIAnalysisCreateDto dto)
         {
@@ -35,14 +42,22 @@ namespace SkinCareSystem.APIService.Controllers
             var result = await _analysisService.CreateAnalysisAsync(dto);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// GET /api/ai/analysis/message/{messageId} - Get AI analysis by message ID
+        /// </summary>
+        /// <param name="messageId"></param>
+        /// <returns></returns>
         [HttpGet("message/{messageId:guid}")]
         public async Task<IActionResult> GetByMessage(Guid messageId)
         {
             var result = await _analysisService.GetAnalysisByMessageAsync(messageId);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// GET /api/ai/analysis/session/{sessionId} - Get AI analyses by session ID
+        /// </summary>
+        /// <param name="sessionId"></param>
+        /// <returns></returns>
         [HttpGet("session/{sessionId:guid}")]
         public async Task<IActionResult> GetBySession(Guid sessionId)
         {
