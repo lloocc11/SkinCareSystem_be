@@ -7,7 +7,6 @@ using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.ExternalServices.IServices;
-using SkinCareSystem.Services.InternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers
 {
@@ -17,7 +16,6 @@ namespace SkinCareSystem.APIService.Controllers
     [Route("api/auth")]
     public class AuthController : BaseApiController
     {
-        private readonly IAuthService _authService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IJwtService _jwtService;
         private readonly IHostEnvironment _environment;
@@ -25,39 +23,17 @@ namespace SkinCareSystem.APIService.Controllers
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
-            IAuthService authService, 
             IUnitOfWork unitOfWork, 
             IJwtService jwtService, 
             IHostEnvironment environment,
             IGoogleAuthService googleAuthService,
             ILogger<AuthController> logger)
         {
-            _authService = authService;
             _unitOfWork = unitOfWork;
             _jwtService = jwtService;
             _environment = environment;
             _googleAuthService = googleAuthService;
             _logger = logger;
-        }
-
-        /// <summary>
-        /// POST /api/auth/token - Standard email/password login
-        /// </summary>
-        [HttpPost("token")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return ToHttpResponse(new ServiceResult
-                {
-                    Status = Const.ERROR_VALIDATION_CODE,
-                    Message = Const.ERROR_INVALID_DATA_MSG
-                });
-            }
-
-            var result = await _authService.LoginAsync(request);
-            return ToHttpResponse(result);
         }
 
         /// <summary>
