@@ -33,8 +33,8 @@ namespace SkinCareSystem.Services.Mapping
                 UserId = dto.UserId,
                 QuestionId = dto.QuestionId,
                 AnswerValue = dto.AnswerValue,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
         }
 
@@ -46,7 +46,7 @@ namespace SkinCareSystem.Services.Mapping
             if (!string.IsNullOrWhiteSpace(dto.AnswerValue))
                 userAnswer.AnswerValue = dto.AnswerValue;
             
-            userAnswer.UpdatedAt = DateTime.UtcNow;
+            userAnswer.UpdatedAt = DateTime.Now;
         }
     }
 }

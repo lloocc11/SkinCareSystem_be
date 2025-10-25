@@ -31,7 +31,7 @@ namespace SkinCareSystem.Services.Mapping
                 RuleId = Guid.NewGuid(),
                 Recommendation = dto.Recommendation,
                 UrgencyLevel = dto.UrgencyLevel,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
         }
 

@@ -231,7 +231,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             }
 
             user.Status = "inactive";
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
 
             await _unitOfWork.UserRepository.UpdateAsync(user);
             await _unitOfWork.SaveAsync();

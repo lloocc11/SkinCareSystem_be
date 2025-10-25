@@ -43,8 +43,8 @@ namespace SkinCareSystem.Services.Mapping
                 SkinType = dto.SkinType,
                 Status = dto.Status,
                 DateOfBirth = dto.DateOfBirth,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
         }
 
@@ -83,7 +83,7 @@ namespace SkinCareSystem.Services.Mapping
                 user.Status = dto.Status;
             }
 
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
         }
     }
 }

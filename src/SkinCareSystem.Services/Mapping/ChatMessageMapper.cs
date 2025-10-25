@@ -36,7 +36,7 @@ namespace SkinCareSystem.Services.Mapping
                 ImageUrl = dto.ImageUrl,
                 MessageType = dto.MessageType,
                 Role = dto.Role,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
         }
     }

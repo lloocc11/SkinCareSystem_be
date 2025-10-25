@@ -33,7 +33,7 @@ namespace SkinCareSystem.Services.Mapping
                 UserSymptomId = Guid.NewGuid(),
                 UserId = dto.UserId,
                 SymptomId = dto.SymptomId,
-                ReportedAt = DateTime.UtcNow
+                ReportedAt = DateTime.Now
             };
         }
 

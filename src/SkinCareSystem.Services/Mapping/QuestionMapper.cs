@@ -30,7 +30,7 @@ namespace SkinCareSystem.Services.Mapping
                 Text = dto.Text,
                 Type = dto.Type,
                 Options = dto.Options,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
         }
 
