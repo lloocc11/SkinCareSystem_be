@@ -206,12 +206,19 @@ public class GoogleAuthService : IGoogleAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during Google authentication - GoogleId: {GoogleId}, Email: {Email}, Message: {Message}", 
-                request.GoogleId, request.Email, ex.Message);
+            // Log full exception details including inner exception for database errors
+            var innerMessage = ex.InnerException?.Message ?? "No inner exception";
+            var innerStackTrace = ex.InnerException?.StackTrace ?? "No stack trace";
+            
+            _logger.LogError(ex, 
+                "Error during Google authentication - GoogleId: {GoogleId}, Email: {Email}, " +
+                "Exception: {Message}, InnerException: {InnerMessage}, InnerStackTrace: {InnerStackTrace}", 
+                request.GoogleId, request.Email, ex.Message, innerMessage, innerStackTrace);
+            
             return new ServiceResult
             {
                 Status = Const.ERROR_EXCEPTION,
-                Message = $"An error occurred during authentication: {ex.Message}",
+                Message = $"An error occurred during authentication: {ex.Message}. Inner: {innerMessage}",
                 Data = null
             };
         }
