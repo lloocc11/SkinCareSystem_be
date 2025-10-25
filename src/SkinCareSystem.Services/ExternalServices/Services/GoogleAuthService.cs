@@ -29,6 +29,9 @@ public class GoogleAuthService : IGoogleAuthService
     {
         try
         {
+            _logger.LogInformation("Starting Google authentication for GoogleId: {GoogleId}, Email: {Email}, FullName: {FullName}",
+                request.GoogleId, request.Email, request.FullName);
+
             // 1. Extract user info from request (already authenticated by frontend)
             var googleId = request.GoogleId;
             var email = request.Email;
@@ -37,6 +40,7 @@ public class GoogleAuthService : IGoogleAuthService
             // 2. Validate input
             if (string.IsNullOrEmpty(googleId) || string.IsNullOrEmpty(email))
             {
+                _logger.LogWarning("Validation failed: GoogleId or Email is empty");
                 return new ServiceResult
                 {
                     Status = Const.ERROR_VALIDATION_CODE,
@@ -49,7 +53,11 @@ public class GoogleAuthService : IGoogleAuthService
             var normalizedEmail = email.Trim().ToLowerInvariant();
             var normalizedGoogleId = googleId.Trim();
 
+            _logger.LogInformation("Normalized - Email: {Email}, GoogleId: {GoogleId}", 
+                normalizedEmail, normalizedGoogleId);
+
             // 4. Check if user exists by Google ID
+            _logger.LogInformation("Checking if user exists by Google ID...");
             var existingUser = await _unitOfWork.UserRepository.GetByGoogleIdAsync(normalizedGoogleId);
 
             User user;
@@ -58,11 +66,13 @@ public class GoogleAuthService : IGoogleAuthService
             if (existingUser != null)
             {
                 // Existing user - login scenario
+                _logger.LogInformation("Existing user found: {UserId}", existingUser.UserId);
                 user = existingUser;
                 
                 // Check if user is active
                 if (user.Status?.ToLower() != "active")
                 {
+                    _logger.LogWarning("User account is inactive: {UserId}", user.UserId);
                     return new ServiceResult
                     {
                         Status = Const.UNAUTHORIZED_ACCESS_CODE,
@@ -91,6 +101,8 @@ public class GoogleAuthService : IGoogleAuthService
             else
             {
                 // New user - registration scenario
+                _logger.LogInformation("New user - checking if email already exists: {Email}", normalizedEmail);
+                
                 // Check if email already exists (registered with different method)
                 var emailUser = await _unitOfWork.UserRepository.GetByEmailAsync(normalizedEmail);
                 if (emailUser != null)
@@ -110,8 +122,12 @@ public class GoogleAuthService : IGoogleAuthService
                 var shouldBeAdmin = !string.IsNullOrWhiteSpace(adminEmail) && 
                                    string.Equals(normalizedEmail, adminEmail.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase);
 
+                _logger.LogInformation("Admin check - AdminEmail env: {AdminEmail}, ShouldBeAdmin: {ShouldBeAdmin}", 
+                    adminEmail ?? "not set", shouldBeAdmin);
+
                 // Get appropriate role
                 var roleName = shouldBeAdmin ? "admin" : "user";
+                _logger.LogInformation("Fetching role: {RoleName}", roleName);
                 var userRole = await _unitOfWork.RoleRepository.GetRoleByNameAsync(roleName);
                 
                 if (userRole == null)
@@ -124,6 +140,9 @@ public class GoogleAuthService : IGoogleAuthService
                         Data = null
                     };
                 }
+
+                _logger.LogInformation("Role found - RoleId: {RoleId}, RoleName: {RoleName}", 
+                    userRole.RoleId, userRole.Name);
 
                 // Create new user
                 user = new User
@@ -143,17 +162,22 @@ public class GoogleAuthService : IGoogleAuthService
                     _logger.LogInformation("Creating admin user via Google: {Email}", user.Email);
                 }
 
+                _logger.LogInformation("Creating new user - UserId: {UserId}, Email: {Email}", 
+                    user.UserId, user.Email);
                 await _unitOfWork.UserRepository.CreateAsync(user);
                 isNewUser = true;
                 
                 _logger.LogInformation("New user registered via Google: {UserId}, Email: {Email}", user.UserId, user.Email);
             }
 
+            _logger.LogInformation("Saving changes to database...");
             await _unitOfWork.SaveAsync();
 
+            _logger.LogInformation("Fetching user role for token generation...");
             // 4. Get role information
             var role = await _unitOfWork.RoleRepository.GetByIdAsync(user.RoleId);
 
+            _logger.LogInformation("Generating JWT token...");
             // 5. Generate JWT token
             var jwtResult = _jwtService.GenerateToken(user);
 
@@ -170,6 +194,9 @@ public class GoogleAuthService : IGoogleAuthService
                 ExpiresAt = jwtResult.ExpiresAtUtc
             };
 
+            _logger.LogInformation("Google authentication successful - UserId: {UserId}, IsNewUser: {IsNewUser}", 
+                user.UserId, isNewUser);
+
             return new ServiceResult
             {
                 Status = isNewUser ? Const.SUCCESS_REGISTER_CODE : Const.SUCCESS_LOGIN_CODE,
@@ -179,11 +206,12 @@ public class GoogleAuthService : IGoogleAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during Google authentication");
+            _logger.LogError(ex, "Error during Google authentication - GoogleId: {GoogleId}, Email: {Email}, Message: {Message}", 
+                request.GoogleId, request.Email, ex.Message);
             return new ServiceResult
             {
                 Status = Const.ERROR_EXCEPTION,
-                Message = "An error occurred during authentication",
+                Message = $"An error occurred during authentication: {ex.Message}",
                 Data = null
             };
         }
