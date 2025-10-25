@@ -93,7 +93,7 @@ public class GoogleAuthService : IGoogleAuthService
                     user.FullName = fullName;
                 }
 
-                user.UpdatedAt = DateTime.UtcNow;
+                user.UpdatedAt = DateTime.Now;
                 await _unitOfWork.UserRepository.UpdateAsync(user);
                 
                 _logger.LogInformation("Existing user logged in: {UserId}, Email: {Email}", user.UserId, user.Email);
@@ -153,8 +153,8 @@ public class GoogleAuthService : IGoogleAuthService
                     GoogleId = normalizedGoogleId,
                     RoleId = userRole.RoleId,
                     Status = "active",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
                 };
 
                 if (shouldBeAdmin)
