@@ -33,8 +33,8 @@ namespace SkinCareSystem.Services.Mapping
                 Content = dto.Content,
                 Source = dto.Source,
                 Status = dto.Status ?? "active",
-                LastUpdated = DateTime.UtcNow,
-                CreatedAt = DateTime.UtcNow
+                LastUpdated = DateTime.Now,
+                CreatedAt = DateTime.Now
             };
         }
 
@@ -52,7 +52,7 @@ namespace SkinCareSystem.Services.Mapping
             if (!string.IsNullOrWhiteSpace(dto.Status))
                 document.Status = dto.Status;
             
-            document.LastUpdated = DateTime.UtcNow;
+            document.LastUpdated = DateTime.Now;
         }
     }
 }

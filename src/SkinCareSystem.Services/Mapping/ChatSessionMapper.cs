@@ -31,8 +31,8 @@ namespace SkinCareSystem.Services.Mapping
                 UserId = dto.UserId,
                 Title = dto.Title,
                 Status = "active",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
         }
 
@@ -51,7 +51,7 @@ namespace SkinCareSystem.Services.Mapping
                 session.Status = dto.Status;
             }
 
-            session.UpdatedAt = DateTime.UtcNow;
+            session.UpdatedAt = DateTime.Now;
         }
     }
 }

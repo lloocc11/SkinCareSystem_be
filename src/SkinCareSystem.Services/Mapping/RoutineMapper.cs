@@ -41,8 +41,8 @@ namespace SkinCareSystem.Services.Mapping
                 Version = 1,
                 ParentRoutineId = dto.ParentRoutineId,
                 Status = dto.Status ?? "active",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
         }
 
@@ -61,7 +61,7 @@ namespace SkinCareSystem.Services.Mapping
                 routine.Status = dto.Status;
             }
 
-            routine.UpdatedAt = DateTime.UtcNow;
+            routine.UpdatedAt = DateTime.Now;
         }
     }
 }

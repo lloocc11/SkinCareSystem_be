@@ -35,8 +35,8 @@ namespace SkinCareSystem.Services.Mapping
                 RawInput = dto.RawInput,
                 Result = dto.Result,
                 Confidence = dto.Confidence,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
         }
 
@@ -64,7 +64,7 @@ namespace SkinCareSystem.Services.Mapping
                 QueryId = dto.QueryId,
                 ResponseText = dto.ResponseText,
                 ResponseType = dto.ResponseType,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
         }
     }

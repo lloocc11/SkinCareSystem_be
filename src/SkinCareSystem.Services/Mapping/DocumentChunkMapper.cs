@@ -28,7 +28,7 @@ namespace SkinCareSystem.Services.Mapping
                 ChunkId = Guid.NewGuid(),
                 DocId = dto.DocId,
                 ChunkText = dto.ChunkText,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
         }
 

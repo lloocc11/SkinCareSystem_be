@@ -33,7 +33,7 @@ namespace SkinCareSystem.Services.Mapping
                 ConsentType = dto.ConsentType,
                 ConsentText = dto.ConsentText,
                 Given = dto.Given,
-                GivenAt = dto.Given ? DateTime.UtcNow : null
+                GivenAt = dto.Given ? DateTime.Now : null
             };
         }
 
@@ -46,7 +46,7 @@ namespace SkinCareSystem.Services.Mapping
             {
                 consent.Given = dto.Given.Value;
                 if (dto.Given.Value && !consent.GivenAt.HasValue)
-                    consent.GivenAt = DateTime.UtcNow;
+                    consent.GivenAt = DateTime.Now;
             }
 
             if (dto.GivenAt.HasValue)

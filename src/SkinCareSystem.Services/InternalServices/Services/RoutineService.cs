@@ -260,7 +260,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             }
 
             routine.Status = "deleted";
-            routine.UpdatedAt = DateTime.UtcNow;
+            routine.UpdatedAt = DateTime.Now;
 
             await _unitOfWork.RoutineRepository.UpdateAsync(routine);
             await _unitOfWork.SaveAsync();

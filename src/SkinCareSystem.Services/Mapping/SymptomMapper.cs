@@ -33,7 +33,7 @@ namespace SkinCareSystem.Services.Mapping
                 Name = dto.Name,
                 Description = dto.Description,
                 ExampleImageUrl = dto.ExampleImageUrl,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
         }
 

@@ -38,7 +38,7 @@ namespace SkinCareSystem.Services.Mapping
                 UserId = dto.UserId,
                 Rating = dto.Rating,
                 Comment = dto.Comment,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
         }
 
