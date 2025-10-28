@@ -11,6 +11,7 @@ using SkinCareSystem.Common.DTOs.Pagination;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
+using SkinCareSystem.Services.ExternalServices.IServices;
 using SkinCareSystem.Services.InternalServices.IServices;
 using SkinCareSystem.Services.Mapping;
 
@@ -23,11 +24,16 @@ namespace SkinCareSystem.Services.InternalServices.Services
 
         private readonly IUnitOfWork _unitOfWork;
         private readonly IHostEnvironment _environment;
+        private readonly ICloudinaryService? _cloudinaryService;
 
-        public ChatMessageService(IUnitOfWork unitOfWork, IHostEnvironment environment)
+        public ChatMessageService(
+            IUnitOfWork unitOfWork,
+            IHostEnvironment environment,
+            ICloudinaryService? cloudinaryService = null)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _cloudinaryService = cloudinaryService;
         }
 
         public async Task<IServiceResult> CreateMessageAsync(ChatMessageCreateDto dto)
@@ -92,6 +98,41 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Unsupported message type");
             }
 
+            string imageUrl;
+            if (_cloudinaryService != null)
+            {
+                try
+                {
+                    var upload = await _cloudinaryService.UploadFileAsync(file, "chat-messages").ConfigureAwait(false);
+                    imageUrl = string.IsNullOrWhiteSpace(upload.SecureUrl) ? upload.Url : upload.SecureUrl;
+                }
+                catch
+                {
+                    imageUrl = await SaveImageLocallyAsync(file).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                imageUrl = await SaveImageLocallyAsync(file).ConfigureAwait(false);
+            }
+
+            var entity = new ChatMessageCreateDto
+            {
+                SessionId = sessionId,
+                UserId = userId,
+                Role = roleValue,
+                MessageType = typeValue,
+                ImageUrl = imageUrl
+            }.ToEntity();
+
+            await _unitOfWork.ChatMessageRepository.CreateAsync(entity);
+            await _unitOfWork.SaveAsync();
+
+            return new ServiceResult(StatusCodes.Status201Created, Const.SUCCESS_CREATE_MSG, entity.ToDto());
+        }
+
+        private async Task<string> SaveImageLocallyAsync(IFormFile file)
+        {
             var uploadsRoot = Path.Combine(_environment.ContentRootPath, "uploads", "chat-images");
             Directory.CreateDirectory(uploadsRoot);
 
@@ -104,21 +145,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 await file.CopyToAsync(stream);
             }
 
-            var relativePath = $"/uploads/chat-images/{fileName}";
-
-            var entity = new ChatMessageCreateDto
-            {
-                SessionId = sessionId,
-                UserId = userId,
-                Role = roleValue,
-                MessageType = typeValue,
-                ImageUrl = relativePath
-            }.ToEntity();
-
-            await _unitOfWork.ChatMessageRepository.CreateAsync(entity);
-            await _unitOfWork.SaveAsync();
-
-            return new ServiceResult(StatusCodes.Status201Created, Const.SUCCESS_CREATE_MSG, entity.ToDto());
+            return $"/uploads/chat-images/{fileName}";
         }
 
         public async Task<IServiceResult> GetMessageAsync(Guid messageId)

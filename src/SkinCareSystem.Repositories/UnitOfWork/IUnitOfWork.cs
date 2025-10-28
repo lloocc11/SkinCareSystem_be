@@ -27,6 +27,7 @@ namespace SkinCareSystem.Repositories.UnitOfWork
         IQuestionRepository Questions { get; }
         IUserAnswerRepository UserAnswers { get; }
         IMedicalDocumentRepository MedicalDocuments { get; }
+        IMedicalDocumentAssetRepository MedicalDocumentAssets { get; }
         IDocumentChunkRepository DocumentChunks { get; }
         IConsentRecordRepository ConsentRecords { get; }
         Task<int> SaveAsync();

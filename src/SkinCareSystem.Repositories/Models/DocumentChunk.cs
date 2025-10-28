@@ -5,15 +5,15 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class DocumentChunk
 {
-    public Guid ChunkId { get; set; }
+    public Guid chunk_id { get; set; }
 
-    public Guid DocId { get; set; }
+    public Guid doc_id { get; set; }
 
-    public string ChunkText { get; set; } = null!;
+    public string chunk_text { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
-
-    public virtual MedicalDocument Doc { get; set; } = null!;
+    public DateTime? created_at { get; set; }
 
     public virtual ICollection<QueryMatch> QueryMatches { get; set; } = new List<QueryMatch>();
+
+    public virtual MedicalDocument doc { get; set; } = null!;
 }

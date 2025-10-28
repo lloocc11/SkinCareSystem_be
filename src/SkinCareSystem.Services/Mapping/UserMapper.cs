@@ -15,17 +15,17 @@ namespace SkinCareSystem.Services.Mapping
 
             return new UserDto
             {
-                UserId = user.UserId,
-                FullName = user.FullName,
-                Email = user.Email,
-                GoogleId = user.GoogleId,
-                RoleName = user.Role?.Name ?? string.Empty,
-                SkinType = user.SkinType,
-                RoleId = user.RoleId,
-                Status = user.Status,
-                DateOfBirth = user.DateOfBirth,
-                CreatedAt = user.CreatedAt,
-                UpdatedAt = user.UpdatedAt
+                UserId = user.user_id,
+                FullName = user.full_name,
+                Email = user.email,
+                GoogleId = user.google_id,
+                RoleName = user.role?.name ?? string.Empty,
+                SkinType = user.skin_type,
+                RoleId = user.role_id,
+                Status = user.status,
+                DateOfBirth = user.date_of_birth,
+                CreatedAt = user.created_at,
+                UpdatedAt = user.updated_at
             };
         }
 
@@ -35,16 +35,16 @@ namespace SkinCareSystem.Services.Mapping
 
             return new User
             {
-                UserId = Guid.NewGuid(),
-                FullName = dto.FullName,
-                Email = dto.Email.Trim().ToLowerInvariant(),
-                GoogleId = dto.GoogleId,
-                RoleId = dto.RoleId,
-                SkinType = dto.SkinType,
-                Status = dto.Status,
-                DateOfBirth = dto.DateOfBirth,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                user_id = Guid.NewGuid(),
+                full_name = dto.FullName,
+                email = dto.Email.Trim().ToLowerInvariant(),
+                google_id = dto.GoogleId,
+                role_id = dto.RoleId,
+                skin_type = dto.SkinType,
+                status = dto.Status,
+                date_of_birth = dto.DateOfBirth,
+                created_at = DateTime.Now,
+                updated_at = DateTime.Now
             };
         }
 
@@ -55,35 +55,35 @@ namespace SkinCareSystem.Services.Mapping
 
             if (!string.IsNullOrWhiteSpace(dto.FullName))
             {
-                user.FullName = dto.FullName;
+                user.full_name = dto.FullName;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Email))
             {
-                user.Email = dto.Email.Trim().ToLowerInvariant();
+                user.email = dto.Email.Trim().ToLowerInvariant();
             }
 
             if (!string.IsNullOrWhiteSpace(dto.SkinType))
             {
-                user.SkinType = dto.SkinType;
+                user.skin_type = dto.SkinType;
             }
 
             if (dto.DateOfBirth.HasValue)
             {
-                user.DateOfBirth = dto.DateOfBirth;
+                user.date_of_birth = dto.DateOfBirth;
             }
 
             if (dto.RoleId.HasValue && dto.RoleId.Value != Guid.Empty)
             {
-                user.RoleId = dto.RoleId.Value;
+                user.role_id = dto.RoleId.Value;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
-                user.Status = dto.Status;
+                user.status = dto.Status;
             }
 
-            user.UpdatedAt = DateTime.Now;
+            user.updated_at = DateTime.Now;
         }
     }
 }

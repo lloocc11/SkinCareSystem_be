@@ -5,17 +5,17 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class QueryMatch
 {
-    public Guid MatchId { get; set; }
+    public Guid match_id { get; set; }
 
-    public Guid QueryId { get; set; }
+    public Guid query_id { get; set; }
 
-    public Guid ChunkId { get; set; }
+    public Guid chunk_id { get; set; }
 
-    public double SimilarityScore { get; set; }
+    public double similarity_score { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public virtual DocumentChunk Chunk { get; set; } = null!;
+    public virtual DocumentChunk chunk { get; set; } = null!;
 
-    public virtual UserQuery Query { get; set; } = null!;
+    public virtual UserQuery query { get; set; } = null!;
 }

@@ -5,17 +5,17 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class ConsentRecord
 {
-    public Guid ConsentId { get; set; }
+    public Guid consent_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public string ConsentType { get; set; } = null!;
+    public string consent_type { get; set; } = null!;
 
-    public string ConsentText { get; set; } = null!;
+    public string consent_text { get; set; } = null!;
 
-    public bool Given { get; set; }
+    public bool given { get; set; }
 
-    public DateTime? GivenAt { get; set; }
+    public DateTime? given_at { get; set; }
 
-    public virtual User User { get; set; } = null!;
+    public virtual User user { get; set; } = null!;
 }

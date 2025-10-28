@@ -15,12 +15,12 @@ namespace SkinCareSystem.Services.Mapping
 
             return new UserSymptomDto
             {
-                UserSymptomId = userSymptom.UserSymptomId,
-                UserId = userSymptom.UserId,
-                SymptomId = userSymptom.SymptomId,
-                ReportedAt = userSymptom.ReportedAt,
-                UserFullName = userSymptom.User?.FullName,
-                SymptomName = userSymptom.Symptom?.Name
+                UserSymptomId = userSymptom.user_symptom_id,
+                UserId = userSymptom.user_id,
+                SymptomId = userSymptom.symptom_id,
+                ReportedAt = userSymptom.reported_at,
+                UserFullName = userSymptom.user?.full_name,
+                SymptomName = userSymptom.symptom?.name
             };
         }
 
@@ -30,10 +30,10 @@ namespace SkinCareSystem.Services.Mapping
 
             return new UserSymptom
             {
-                UserSymptomId = Guid.NewGuid(),
-                UserId = dto.UserId,
-                SymptomId = dto.SymptomId,
-                ReportedAt = DateTime.Now
+                user_symptom_id = Guid.NewGuid(),
+                user_id = dto.UserId,
+                symptom_id = dto.SymptomId,
+                reported_at = DateTime.Now
             };
         }
 
@@ -44,7 +44,7 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.ReportedAt.HasValue)
             {
-                userSymptom.ReportedAt = dto.ReportedAt.Value;
+                userSymptom.reported_at = dto.ReportedAt.Value;
             }
         }
     }

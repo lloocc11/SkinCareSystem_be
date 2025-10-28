@@ -5,21 +5,21 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class RoutineStep
 {
-    public Guid StepId { get; set; }
+    public Guid step_id { get; set; }
 
-    public Guid RoutineId { get; set; }
+    public Guid routine_id { get; set; }
 
-    public int StepOrder { get; set; }
+    public int step_order { get; set; }
 
-    public string Instruction { get; set; } = null!;
+    public string instruction { get; set; } = null!;
 
-    public string TimeOfDay { get; set; } = null!;
+    public string time_of_day { get; set; } = null!;
 
-    public string Frequency { get; set; } = null!;
+    public string frequency { get; set; } = null!;
 
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 
-    public virtual Routine Routine { get; set; } = null!;
-
     public virtual ICollection<RoutineProgress> RoutineProgresses { get; set; } = new List<RoutineProgress>();
+
+    public virtual Routine routine { get; set; } = null!;
 }

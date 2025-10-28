@@ -5,19 +5,19 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class UserAnswer
 {
-    public Guid AnswerId { get; set; }
+    public Guid answer_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public Guid QuestionId { get; set; }
+    public Guid question_id { get; set; }
 
-    public string AnswerValue { get; set; } = null!;
+    public string answer_value { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime? updated_at { get; set; }
 
-    public virtual Question Question { get; set; } = null!;
+    public virtual Question question { get; set; } = null!;
 
-    public virtual User User { get; set; } = null!;
+    public virtual User user { get; set; } = null!;
 }

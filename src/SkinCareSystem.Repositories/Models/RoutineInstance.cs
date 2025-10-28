@@ -5,23 +5,23 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class RoutineInstance
 {
-    public Guid InstanceId { get; set; }
+    public Guid instance_id { get; set; }
 
-    public Guid RoutineId { get; set; }
+    public Guid routine_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public DateOnly StartDate { get; set; }
+    public DateOnly start_date { get; set; }
 
-    public DateOnly? EndDate { get; set; }
+    public DateOnly? end_date { get; set; }
 
-    public string Status { get; set; } = null!;
+    public string status { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
-
-    public virtual Routine Routine { get; set; } = null!;
+    public DateTime? created_at { get; set; }
 
     public virtual ICollection<RoutineProgress> RoutineProgresses { get; set; } = new List<RoutineProgress>();
 
-    public virtual User User { get; set; } = null!;
+    public virtual Routine routine { get; set; } = null!;
+
+    public virtual User user { get; set; } = null!;
 }

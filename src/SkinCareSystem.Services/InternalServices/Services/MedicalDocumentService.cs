@@ -55,7 +55,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
         {
             try
             {
-                var document = await _unitOfWork.MedicalDocuments.GetByIdAsync(docId);
+                var document = await _unitOfWork.MedicalDocuments.GetByIdWithDetailsAsync(docId);
                 if (document == null)
                 {
                     return new ServiceResult(Const.WARNING_NO_DATA_CODE, Const.WARNING_NO_DATA_MSG);
@@ -82,7 +82,8 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 await _unitOfWork.MedicalDocuments.CreateAsync(document);
                 await _unitOfWork.SaveAsync();
 
-                return new ServiceResult(Const.SUCCESS_CREATE_CODE, Const.SUCCESS_CREATE_MSG, document.ToDto()!);
+                var created = await _unitOfWork.MedicalDocuments.GetByIdWithDetailsAsync(document.DocId);
+                return new ServiceResult(Const.SUCCESS_CREATE_CODE, Const.SUCCESS_CREATE_MSG, created?.ToDto());
             }
             catch (Exception ex)
             {
@@ -104,7 +105,8 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 await _unitOfWork.MedicalDocuments.UpdateAsync(document);
                 await _unitOfWork.SaveAsync();
 
-                return new ServiceResult(Const.SUCCESS_UPDATE_CODE, Const.SUCCESS_UPDATE_MSG, document.ToDto()!);
+                var updated = await _unitOfWork.MedicalDocuments.GetByIdWithDetailsAsync(docId);
+                return new ServiceResult(Const.SUCCESS_UPDATE_CODE, Const.SUCCESS_UPDATE_MSG, updated?.ToDto());
             }
             catch (Exception ex)
             {

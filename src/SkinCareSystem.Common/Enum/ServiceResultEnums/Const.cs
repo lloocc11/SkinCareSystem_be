@@ -14,6 +14,7 @@ namespace SkinCareSystem.Common.Enum.ServiceResultEnums
 
         public const int ERROR_EXCEPTION = 500;        // HTTP 500 Internal Server Error
         public const int ERROR_VALIDATION_CODE = 400;  // HTTP 400 Bad Request
+        public const int ERROR_INVALID_DATA_CODE = 400;  // HTTP 400 Bad Request
         public const string ERROR_INVALID_DATA_MSG = "Invalid data";
 
         #endregion

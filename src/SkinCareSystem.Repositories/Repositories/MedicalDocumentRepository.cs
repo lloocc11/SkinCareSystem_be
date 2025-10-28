@@ -21,6 +21,7 @@ namespace SkinCareSystem.Repositories.Repositories
             return await _context.Set<MedicalDocument>()
                 .AsNoTracking()
                 .Include(md => md.DocumentChunks)
+                .Include(md => md.MedicalDocumentAssets)
                 .FirstOrDefaultAsync(md => md.DocId == docId);
         }
     }
@@ -47,6 +48,36 @@ namespace SkinCareSystem.Repositories.Repositories
                 .AsNoTracking()
                 .Include(dc => dc.Doc)
                 .FirstOrDefaultAsync(dc => dc.ChunkId == chunkId);
+        }
+    }
+
+    public class MedicalDocumentAssetRepository : GenericRepository<MedicalDocumentAsset>, IMedicalDocumentAssetRepository
+    {
+        public MedicalDocumentAssetRepository(SkinCareSystemDbContext context) : base(context)
+        {
+        }
+
+        public async Task<IReadOnlyList<MedicalDocumentAsset>> GetByDocumentIdAsync(Guid docId)
+        {
+            return await _context.Set<MedicalDocumentAsset>()
+                .AsNoTracking()
+                .Include(asset => asset.doc)
+                .Where(asset => asset.doc_id == docId)
+                .OrderByDescending(asset => asset.created_at)
+                .ToListAsync();
+        }
+
+        public async Task<MedicalDocumentAsset?> GetByPublicIdAsync(string publicId)
+        {
+            if (string.IsNullOrWhiteSpace(publicId))
+            {
+                return null;
+            }
+
+            return await _context.Set<MedicalDocumentAsset>()
+                .AsNoTracking()
+                .Include(asset => asset.doc)
+                .FirstOrDefaultAsync(asset => asset.public_id == publicId);
         }
     }
 }

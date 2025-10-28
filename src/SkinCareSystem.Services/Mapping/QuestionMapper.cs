@@ -12,11 +12,11 @@ namespace SkinCareSystem.Services.Mapping
 
             return new QuestionDto
             {
-                QuestionId = question.QuestionId,
-                Text = question.Text,
-                Type = question.Type,
-                Options = question.Options,
-                CreatedAt = question.CreatedAt
+                QuestionId = question.question_id,
+                Text = question.text,
+                Type = question.type,
+                Options = question.options,
+                CreatedAt = question.created_at
             };
         }
 
@@ -26,11 +26,11 @@ namespace SkinCareSystem.Services.Mapping
 
             return new Question
             {
-                QuestionId = Guid.NewGuid(),
-                Text = dto.Text,
-                Type = dto.Type,
-                Options = dto.Options,
-                CreatedAt = DateTime.Now
+                question_id = Guid.NewGuid(),
+                text = dto.Text,
+                type = dto.Type,
+                options = dto.Options,
+                created_at = DateTime.Now
             };
         }
 
@@ -40,11 +40,11 @@ namespace SkinCareSystem.Services.Mapping
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
             if (!string.IsNullOrWhiteSpace(dto.Text))
-                question.Text = dto.Text;
+                question.text = dto.Text;
             if (!string.IsNullOrWhiteSpace(dto.Type))
-                question.Type = dto.Type;
+                question.type = dto.Type;
             if (dto.Options != null)
-                question.Options = dto.Options;
+                question.options = dto.Options;
         }
     }
 }

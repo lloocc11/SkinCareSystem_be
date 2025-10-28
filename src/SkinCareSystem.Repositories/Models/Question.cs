@@ -5,15 +5,15 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class Question
 {
-    public Guid QuestionId { get; set; }
+    public Guid question_id { get; set; }
 
-    public string Text { get; set; } = null!;
+    public string text { get; set; } = null!;
 
-    public string Type { get; set; } = null!;
+    public string type { get; set; } = null!;
 
-    public string? Options { get; set; }
+    public string? options { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
     public virtual ICollection<RuleCondition> RuleConditions { get; set; } = new List<RuleCondition>();
 

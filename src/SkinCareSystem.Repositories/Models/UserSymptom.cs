@@ -5,15 +5,15 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class UserSymptom
 {
-    public Guid UserSymptomId { get; set; }
+    public Guid user_symptom_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public Guid SymptomId { get; set; }
+    public Guid symptom_id { get; set; }
 
-    public DateTime? ReportedAt { get; set; }
+    public DateTime? reported_at { get; set; }
 
-    public virtual Symptom Symptom { get; set; } = null!;
+    public virtual Symptom symptom { get; set; } = null!;
 
-    public virtual User User { get; set; } = null!;
+    public virtual User user { get; set; } = null!;
 }
