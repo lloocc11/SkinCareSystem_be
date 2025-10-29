@@ -4,15 +4,19 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using SkinCareSystem.APIService.Models;
+using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.ExternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers
 {
+    /// <summary>
+    /// Quản lý upload/xóa media trên Cloudinary (tự dùng cho tài liệu & chat image).
+    /// </summary>
     [Authorize]
     [ApiController]
     [Route("api/media")]
-    public class MediaController : ControllerBase
+    public class MediaController : BaseApiController
     {
         private readonly ICloudinaryService _cloudinaryService;
 
@@ -22,44 +26,40 @@ namespace SkinCareSystem.APIService.Controllers
         }
 
         /// <summary>
-        /// Upload a media file to Cloudinary.
+        /// Upload file lên Cloudinary.
         /// </summary>
-        /// <param name="file">The file to upload.</param>
-        /// <param name="folder">Optional target folder.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Upload metadata.</returns>
         [HttpPost("upload")]
         [RequestFormLimits(MultipartBodyLengthLimit = 104857600)] // 100 MB
         [RequestSizeLimit(104857600)]
-        public async Task<IActionResult> UploadAsync([FromForm] IFormFile file, [FromForm] string? folder = null, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> UploadAsync( IFormFile file, string? folder = null, CancellationToken cancellationToken = default)
         {
             if (file == null || file.Length == 0)
             {
-                return BadRequest(Api.Fail("Image file is required.", StatusCodes.Status400BadRequest));
+                var invalid = new ServiceResult(Const.ERROR_INVALID_DATA_CODE, "Image file is required.");
+                return ToHttpResponse(invalid);
             }
 
             var result = await _cloudinaryService.UploadFileAsync(file, folder, cancellationToken).ConfigureAwait(false);
-            return Ok(Api.Ok(result, "Uploaded successfully."));
+            var success = new ServiceResult(Const.SUCCESS_CREATE_CODE, Const.SUCCESS_CREATE_MSG, result);
+            return ToHttpResponse(success);
         }
 
         /// <summary>
-        /// Delete an asset from Cloudinary.
+        /// Xóa file khỏi Cloudinary.
         /// </summary>
-        /// <param name="publicId">Cloudinary public id.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Deletion status.</returns>
         [HttpDelete("{publicId}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteAsync(string publicId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(publicId))
             {
-                return BadRequest(Api.Fail("publicId is required.", StatusCodes.Status400BadRequest));
+                var invalid = new ServiceResult(Const.ERROR_INVALID_DATA_CODE, "publicId is required.");
+                return ToHttpResponse(invalid);
             }
 
             var message = await _cloudinaryService.DeleteFileAsync(publicId, cancellationToken).ConfigureAwait(false);
-
-            return Ok(Api.Ok(new { publicId, message }, "Deleted successfully."));
+            var success = new ServiceResult(Const.SUCCESS_DELETE_CODE, Const.SUCCESS_DELETE_MSG, new { publicId, message });
+            return ToHttpResponse(success);
         }
     }
 }

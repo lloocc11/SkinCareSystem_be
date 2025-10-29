@@ -6,9 +6,9 @@ using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Repositories.IRepositories
 {
-    public interface IAIResponseRepository : IGenericRepository<Airesponse>
+    public interface IAIResponseRepository : IGenericRepository<AIResponse>
     {
-        Task<IReadOnlyList<Airesponse>> GetByQueryAsync(Guid queryId);
-        Task<IReadOnlyList<Airesponse>> GetByQueryIdsAsync(IEnumerable<Guid> queryIds);
+        Task<IReadOnlyList<AIResponse>> GetByQueryAsync(Guid queryId);
+        Task<IReadOnlyList<AIResponse>> GetByQueryIdsAsync(IEnumerable<Guid> queryIds);
     }
 }

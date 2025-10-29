@@ -10,48 +10,79 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SkinCareSystem.APIService.Models;
+using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Services.Base;
+using SkinCareSystem.Services.ExternalServices.IServices;
 using SkinCareSystem.Services.Rag;
 
 namespace SkinCareSystem.APIService.Controllers;
 
+/// <summary>
+/// Tiếp nhận yêu cầu tư vấn (text + ảnh), chạy RAG & LLM để sinh routine cá nhân hóa.
+/// <summary>
+/// Tiếp nhận yêu cầu tư vấn (text + ảnh), chạy RAG & LLM để sinh routine cá nhân hóa.
+/// </summary>
 [Authorize]
 [ApiController]
 [Route("consultations")]
-public sealed class ConsultationsController : ControllerBase
+public sealed class ConsultationsController : BaseApiController
 {
     private readonly IConsultationService _consultationService;
     private readonly IWebHostEnvironment _environment;
+    private readonly ICloudinaryService? _cloudinaryService;
 
-    public ConsultationsController(IConsultationService consultationService, IWebHostEnvironment environment)
+    /// <summary>
+    /// Luồng tư vấn cá nhân hóa (text + ảnh) -> RAG -> GPT -> Routine.
+    /// </summary>
+    public ConsultationsController(
+        IConsultationService consultationService,
+        IWebHostEnvironment environment,
+        ICloudinaryService? cloudinaryService = null)
     {
         _consultationService = consultationService;
         _environment = environment;
+        _cloudinaryService = cloudinaryService;
     }
 
     [HttpPost]
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<ApiResponse<object>>> CreateAsync(
+    public async Task<IActionResult> CreateAsync(
         [FromForm] ConsultationForm form,
         CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
             var errorMessage = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
-            var errorResponse = Api.Fail(errorMessage, StatusCodes.Status400BadRequest);
-            return StatusCode(errorResponse.Status, errorResponse);
+            var invalid = new ServiceResult(Const.ERROR_INVALID_DATA_CODE, errorMessage);
+            return ToHttpResponse(invalid);
         }
 
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdValue, out var userId))
         {
-            var errorResponse = Api.Fail("Không xác định được người dùng.", StatusCodes.Status401Unauthorized);
-            return StatusCode(errorResponse.Status, errorResponse);
+            var unauthorized = new ServiceResult(Const.UNAUTHORIZED_ACCESS_CODE, "Không xác định được người dùng.");
+            return ToHttpResponse(unauthorized);
         }
 
         string? imageUrl = form.ImageUrl;
         if (form.Image is not null && form.Image.Length > 0)
         {
-            imageUrl = await SaveImageAsync(form.Image, cancellationToken).ConfigureAwait(false);
+            if (_cloudinaryService != null)
+            {
+                try
+                {
+                    var upload = await _cloudinaryService.UploadFileAsync(form.Image, "consultations", cancellationToken).ConfigureAwait(false);
+                    imageUrl = string.IsNullOrWhiteSpace(upload.SecureUrl) ? upload.Url : upload.SecureUrl;
+                }
+                catch
+                {
+                    imageUrl = await SaveImageAsync(form.Image, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                imageUrl = await SaveImageAsync(form.Image, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         try
@@ -72,13 +103,13 @@ public sealed class ConsultationsController : ControllerBase
                 context = result.ContextItems.Select(RagItemDto.FromDomain).ToArray()
             };
 
-            var response = Api.Created(payload, "Tư vấn đã được tạo.");
-            return StatusCode(response.Status, response);
+            var success = new ServiceResult(Const.SUCCESS_CREATE_CODE, "Tư vấn đã được tạo.", payload);
+            return ToHttpResponse(success, Url.ActionLink());
         }
         catch (Exception ex)
         {
-            var errorResponse = Api.Fail($"Không thể xử lý tư vấn: {ex.Message}", StatusCodes.Status500InternalServerError);
-            return StatusCode(errorResponse.Status, errorResponse);
+            var failure = new ServiceResult(Const.ERROR_EXCEPTION, $"Không thể xử lý tư vấn: {ex.Message}");
+            return ToHttpResponse(failure);
         }
     }
 

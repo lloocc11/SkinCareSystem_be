@@ -98,5 +98,16 @@ namespace SkinCareSystem.APIService.Controllers
             var result = await _chatSessionService.UpdateSessionAsync(id, dto);
             return ToHttpResponse(result);
         }
+        /// <summary>
+        /// DELETE /api/chat/sessions/{id} - Delete chat session
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var result = await _chatSessionService.DeleteSessionAsync(id);
+            return ToHttpResponse(result);
+        }
     }
 }

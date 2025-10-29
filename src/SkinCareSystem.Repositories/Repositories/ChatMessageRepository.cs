@@ -20,8 +20,8 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.ChatMessages
                 .AsNoTracking()
-                .Where(m => m.SessionId == sessionId)
-                .OrderBy(m => m.CreatedAt)
+                .Where(m => m.session_id == sessionId)
+                .OrderBy(m => m.created_at)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -31,7 +31,7 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.ChatMessages
                 .AsNoTracking()
-                .CountAsync(m => m.SessionId == sessionId);
+                .CountAsync(m => m.session_id == sessionId);
         }
 
     }

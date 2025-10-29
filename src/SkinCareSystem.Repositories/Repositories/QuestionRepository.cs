@@ -21,7 +21,7 @@ namespace SkinCareSystem.Repositories.Repositories
             return await _context.Set<Question>()
                 .AsNoTracking()
                 .Include(q => q.UserAnswers)
-                .FirstOrDefaultAsync(q => q.QuestionId == questionId);
+                .FirstOrDefaultAsync(q => q.question_id == questionId);
         }
     }
 
@@ -35,10 +35,10 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<UserAnswer>()
                 .AsNoTracking()
-                .Include(ua => ua.User)
-                .Include(ua => ua.Question)
-                .Where(ua => ua.UserId == userId)
-                .OrderByDescending(ua => ua.CreatedAt)
+                .Include(ua => ua.user)
+                .Include(ua => ua.question)
+                .Where(ua => ua.user_id == userId)
+                .OrderByDescending(ua => ua.created_at)
                 .ToListAsync();
         }
 
@@ -46,9 +46,9 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<UserAnswer>()
                 .AsNoTracking()
-                .Include(ua => ua.User)
-                .Include(ua => ua.Question)
-                .FirstOrDefaultAsync(ua => ua.AnswerId == answerId);
+                .Include(ua => ua.user)
+                .Include(ua => ua.question)
+                .FirstOrDefaultAsync(ua => ua.answer_id == answerId);
         }
     }
 }

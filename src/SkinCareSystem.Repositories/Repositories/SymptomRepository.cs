@@ -21,7 +21,7 @@ namespace SkinCareSystem.Repositories.Repositories
             return await _context.Set<Symptom>()
                 .AsNoTracking()
                 .Include(s => s.UserSymptoms)
-                .FirstOrDefaultAsync(s => s.SymptomId == symptomId);
+                .FirstOrDefaultAsync(s => s.symptom_id == symptomId);
         }
     }
 
@@ -35,10 +35,10 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<UserSymptom>()
                 .AsNoTracking()
-                .Include(us => us.User)
-                .Include(us => us.Symptom)
-                .Where(us => us.UserId == userId)
-                .OrderByDescending(us => us.ReportedAt)
+                .Include(us => us.user)
+                .Include(us => us.symptom)
+                .Where(us => us.user_id == userId)
+                .OrderByDescending(us => us.reported_at)
                 .ToListAsync();
         }
 
@@ -46,9 +46,9 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<UserSymptom>()
                 .AsNoTracking()
-                .Include(us => us.User)
-                .Include(us => us.Symptom)
-                .FirstOrDefaultAsync(us => us.UserSymptomId == userSymptomId);
+                .Include(us => us.user)
+                .Include(us => us.symptom)
+                .FirstOrDefaultAsync(us => us.user_symptom_id == userSymptomId);
         }
     }
 }

@@ -15,13 +15,13 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RoutineProgressDto
             {
-                ProgressId = progress.ProgressId,
-                InstanceId = progress.InstanceId,
-                StepId = progress.StepId,
-                CompletedAt = progress.CompletedAt,
-                PhotoUrl = progress.PhotoUrl,
-                Note = progress.Note,
-                Status = progress.Status
+                ProgressId = progress.progress_id,
+                InstanceId = progress.instance_id,
+                StepId = progress.step_id,
+                CompletedAt = progress.completed_at,
+                PhotoUrl = progress.photo_url,
+                Note = progress.note,
+                Status = progress.status
             };
         }
 
@@ -31,13 +31,13 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RoutineProgress
             {
-                ProgressId = Guid.NewGuid(),
-                InstanceId = dto.InstanceId,
-                StepId = dto.StepId,
-                CompletedAt = dto.CompletedAt,
-                PhotoUrl = dto.PhotoUrl,
-                Note = dto.Note,
-                Status = dto.Status ?? "completed"
+                progress_id = Guid.NewGuid(),
+                instance_id = dto.InstanceId,
+                step_id = dto.StepId,
+                completed_at = dto.CompletedAt,
+                photo_url = dto.PhotoUrl,
+                note = dto.Note,
+                status = dto.Status ?? "completed"
             };
         }
 
@@ -48,22 +48,22 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.CompletedAt.HasValue)
             {
-                progress.CompletedAt = dto.CompletedAt.Value;
+                progress.completed_at = dto.CompletedAt.Value;
             }
 
             if (dto.PhotoUrl != null)
             {
-                progress.PhotoUrl = dto.PhotoUrl;
+                progress.photo_url = dto.PhotoUrl;
             }
 
             if (dto.Note != null)
             {
-                progress.Note = dto.Note;
+                progress.note = dto.Note;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
-                progress.Status = dto.Status;
+                progress.status = dto.Status;
             }
         }
     }

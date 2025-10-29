@@ -15,12 +15,12 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RuleConditionDto
             {
-                RuleConditionId = ruleCondition.RuleConditionId,
-                RuleId = ruleCondition.RuleId,
-                SymptomId = ruleCondition.SymptomId,
-                QuestionId = ruleCondition.QuestionId,
-                Operator = ruleCondition.Operator,
-                Value = ruleCondition.Value
+                RuleConditionId = ruleCondition.rule_condition_id,
+                RuleId = ruleCondition.rule_id,
+                SymptomId = ruleCondition.symptom_id,
+                QuestionId = ruleCondition.question_id,
+                Operator = ruleCondition._operator,
+                Value = ruleCondition.value
             };
         }
 
@@ -30,12 +30,12 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RuleCondition
             {
-                RuleConditionId = Guid.NewGuid(),
-                RuleId = dto.RuleId,
-                SymptomId = dto.SymptomId,
-                QuestionId = dto.QuestionId,
-                Operator = dto.Operator,
-                Value = dto.Value
+                rule_condition_id = Guid.NewGuid(),
+                rule_id = dto.RuleId,
+                symptom_id = dto.SymptomId,
+                question_id = dto.QuestionId,
+                _operator = dto.Operator,
+                value = dto.Value
             };
         }
 
@@ -46,22 +46,22 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.SymptomId.HasValue)
             {
-                ruleCondition.SymptomId = dto.SymptomId;
+                ruleCondition.symptom_id = dto.SymptomId;
             }
 
             if (dto.QuestionId.HasValue)
             {
-                ruleCondition.QuestionId = dto.QuestionId;
+                ruleCondition.question_id = dto.QuestionId;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Operator))
             {
-                ruleCondition.Operator = dto.Operator;
+                ruleCondition._operator = dto.Operator;
             }
 
             if (dto.Value != null)
             {
-                ruleCondition.Value = dto.Value;
+                ruleCondition.value = dto.Value;
             }
         }
     }

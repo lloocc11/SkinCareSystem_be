@@ -4,14 +4,19 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SkinCareSystem.APIService.Models;
+using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.Rag;
 
 namespace SkinCareSystem.APIService.Controllers;
 
+/// <summary>
+/// RAG search endpoint: trả về chunk tài liệu + ảnh liên quan để phục vụ tư vấn.
+/// </summary>
 [Authorize]
 [ApiController]
 [Route("rag")]
-public sealed class RagController : ControllerBase
+public sealed class RagController : BaseApiController
 {
     private readonly IRagSearchService _ragSearchService;
 
@@ -20,16 +25,19 @@ public sealed class RagController : ControllerBase
         _ragSearchService = ragSearchService;
     }
 
+    /// <summary>
+    /// Semantic search trên tài liệu y khoa (pgvector + Cloudinary assets).
+    /// </summary>
     [HttpPost("search")]
-    public async Task<ActionResult<ApiResponse<object>>> SearchAsync(
+    public async Task<IActionResult> SearchAsync(
         [FromBody] RagSearchRequest request,
         CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
             var errorMessage = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
-            var errorResponse = Api.Fail(errorMessage, 400);
-            return StatusCode(errorResponse.Status, errorResponse);
+            var invalidResult = new ServiceResult(Const.ERROR_INVALID_DATA_CODE, errorMessage);
+            return ToHttpResponse(invalidResult);
         }
 
         var items = await _ragSearchService
@@ -41,7 +49,7 @@ public sealed class RagController : ControllerBase
             items = items.Select(RagItemDto.FromDomain).ToArray()
         };
 
-        var response = Api.Ok(payload);
-        return StatusCode(response.Status, response);
+        var result = new ServiceResult(Const.SUCCESS_READ_CODE, Const.SUCCESS_READ_MSG, payload);
+        return ToHttpResponse(result);
     }
 }

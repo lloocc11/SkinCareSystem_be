@@ -57,16 +57,16 @@ namespace SkinCareSystem.Services.ExternalServices.Services
             }
 
             var expiration = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes);
-            var roleClaimValue = string.IsNullOrWhiteSpace(user.Role?.Name) ? "user" : user.Role!.Name;
+            var roleClaimValue = string.IsNullOrWhiteSpace(user.role?.name) ? "user" : user.role!.name;
 
             var claims = new List<Claim>
             {
-                new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-                new(JwtRegisteredClaimNames.Email, user.Email),
+                new(JwtRegisteredClaimNames.Sub, user.user_id.ToString()),
+                new(JwtRegisteredClaimNames.Email, user.email),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new(ClaimTypes.Name, user.FullName),
-                new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                new("roleId", user.RoleId.ToString()),
+                new(ClaimTypes.Name, user.full_name),
+                new(ClaimTypes.NameIdentifier, user.user_id.ToString()),
+                new("roleId", user.role_id.ToString()),
                 new(ClaimTypes.Role, roleClaimValue)
             };
 

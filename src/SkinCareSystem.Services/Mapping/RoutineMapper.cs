@@ -15,16 +15,16 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RoutineDto
             {
-                RoutineId = routine.RoutineId,
-                UserId = routine.UserId,
-                AnalysisId = routine.AnalysisId,
-                Description = routine.Description,
-                Version = routine.Version,
-                ParentRoutineId = routine.ParentRoutineId,
-                Status = routine.Status,
-                CreatedAt = routine.CreatedAt,
-                UpdatedAt = routine.UpdatedAt,
-                UserFullName = routine.User?.FullName
+                RoutineId = routine.routine_id,
+                UserId = routine.user_id,
+                AnalysisId = routine.analysis_id,
+                Description = routine.description,
+                Version = routine.version,
+                ParentRoutineId = routine.parent_routine_id,
+                Status = routine.status,
+                CreatedAt = routine.created_at,
+                UpdatedAt = routine.updated_at,
+                UserFullName = routine.user?.full_name
             };
         }
 
@@ -34,15 +34,15 @@ namespace SkinCareSystem.Services.Mapping
 
             return new Routine
             {
-                RoutineId = Guid.NewGuid(),
-                UserId = dto.UserId,
-                AnalysisId = dto.AnalysisId,
-                Description = dto.Description,
-                Version = 1,
-                ParentRoutineId = dto.ParentRoutineId,
-                Status = dto.Status ?? "active",
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                routine_id = Guid.NewGuid(),
+                user_id = dto.UserId,
+                analysis_id = dto.AnalysisId,
+                description = dto.Description,
+                version = 1,
+                parent_routine_id = dto.ParentRoutineId,
+                status = dto.Status ?? "active",
+                created_at = DateTime.Now,
+                updated_at = DateTime.Now
             };
         }
 
@@ -53,15 +53,15 @@ namespace SkinCareSystem.Services.Mapping
 
             if (!string.IsNullOrWhiteSpace(dto.Description))
             {
-                routine.Description = dto.Description;
+                routine.description = dto.Description;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
-                routine.Status = dto.Status;
+                routine.status = dto.Status;
             }
 
-            routine.UpdatedAt = DateTime.Now;
+            routine.updated_at = DateTime.Now;
         }
     }
 }

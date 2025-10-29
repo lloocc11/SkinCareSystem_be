@@ -6,9 +6,9 @@ using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Repositories.IRepositories
 {
-    public interface IAIAnalysisRepository : IGenericRepository<Aianalysis>
+    public interface IAIAnalysisRepository : IGenericRepository<AIAnalysis>
     {
-        Task<Aianalysis?> GetByMessageIdAsync(Guid messageId);
-        Task<IReadOnlyList<Aianalysis>> GetBySessionAsync(Guid sessionId);
+        Task<AIAnalysis?> GetByMessageIdAsync(Guid messageId);
+        Task<IReadOnlyList<AIAnalysis>> GetBySessionAsync(Guid sessionId);
     }
 }

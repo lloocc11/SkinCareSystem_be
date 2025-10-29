@@ -66,13 +66,13 @@ public class GoogleAuthService : IGoogleAuthService
             if (existingUser != null)
             {
                 // Existing user - login scenario
-                _logger.LogInformation("Existing user found: {UserId}", existingUser.UserId);
+                _logger.LogInformation("Existing user found: {UserId}", existingUser.user_id);
                 user = existingUser;
                 
                 // Check if user is active
-                if (user.Status?.ToLower() != "active")
+                if (user.status?.ToLower() != "active")
                 {
-                    _logger.LogWarning("User account is inactive: {UserId}", user.UserId);
+                    _logger.LogWarning("User account is inactive: {UserId}", user.user_id);
                     return new ServiceResult
                     {
                         Status = Const.UNAUTHORIZED_ACCESS_CODE,
@@ -82,21 +82,21 @@ public class GoogleAuthService : IGoogleAuthService
                 }
 
                 // Update email if changed
-                if (!string.Equals(user.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(user.email, normalizedEmail, StringComparison.OrdinalIgnoreCase))
                 {
-                    user.Email = normalizedEmail;
+                    user.email = normalizedEmail;
                 }
 
                 // Update full name if changed
-                if (!string.IsNullOrWhiteSpace(fullName) && !string.Equals(user.FullName, fullName, StringComparison.Ordinal))
+                if (!string.IsNullOrWhiteSpace(fullName) && !string.Equals(user.full_name, fullName, StringComparison.Ordinal))
                 {
-                    user.FullName = fullName;
+                    user.full_name = fullName;
                 }
 
-                user.UpdatedAt = DateTime.Now;
+                user.updated_at = DateTime.Now;
                 await _unitOfWork.UserRepository.UpdateAsync(user);
                 
-                _logger.LogInformation("Existing user logged in: {UserId}, Email: {Email}", user.UserId, user.Email);
+                _logger.LogInformation("Existing user logged in: {UserId}, Email: {Email}", user.user_id, user.email);
             }
             else
             {
@@ -142,32 +142,32 @@ public class GoogleAuthService : IGoogleAuthService
                 }
 
                 _logger.LogInformation("Role found - RoleId: {RoleId}, RoleName: {RoleName}", 
-                    userRole.RoleId, userRole.Name);
+                    userRole.role_id, userRole.name);
 
                 // Create new user
                 user = new User
                 {
-                    UserId = Guid.NewGuid(),
-                    FullName = string.IsNullOrWhiteSpace(fullName) ? normalizedEmail : fullName.Trim(),
-                    Email = normalizedEmail,
-                    GoogleId = normalizedGoogleId,
-                    RoleId = userRole.RoleId,
-                    Status = "active",
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
+                    user_id = Guid.NewGuid(),
+                    full_name = string.IsNullOrWhiteSpace(fullName) ? normalizedEmail : fullName.Trim(),
+                    email = normalizedEmail,
+                    google_id = normalizedGoogleId,
+                    role_id = userRole.role_id,
+                    status = "active",
+                    created_at = DateTime.Now,
+                    updated_at = DateTime.Now
                 };
 
                 if (shouldBeAdmin)
                 {
-                    _logger.LogInformation("Creating admin user via Google: {Email}", user.Email);
+                    _logger.LogInformation("Creating admin user via Google: {Email}", user.email);
                 }
 
                 _logger.LogInformation("Creating new user - UserId: {UserId}, Email: {Email}", 
-                    user.UserId, user.Email);
+                    user.user_id, user.email);
                 await _unitOfWork.UserRepository.CreateAsync(user);
                 isNewUser = true;
                 
-                _logger.LogInformation("New user registered via Google: {UserId}, Email: {Email}", user.UserId, user.Email);
+                _logger.LogInformation("New user registered via Google: {UserId}, Email: {Email}", user.user_id, user.email);
             }
 
             _logger.LogInformation("Saving changes to database...");
@@ -175,7 +175,7 @@ public class GoogleAuthService : IGoogleAuthService
 
             _logger.LogInformation("Fetching user role for token generation...");
             // 4. Get role information
-            var role = await _unitOfWork.RoleRepository.GetByIdAsync(user.RoleId);
+            var role = await _unitOfWork.RoleRepository.GetByIdAsync(user.role_id);
 
             _logger.LogInformation("Generating JWT token...");
             // 5. Generate JWT token
@@ -184,18 +184,18 @@ public class GoogleAuthService : IGoogleAuthService
             // 6. Return response
             var response = new GoogleAuthResponseDto
             {
-                UserId = user.UserId,
-                FullName = user.FullName,
-                Email = user.Email,
-                RoleId = user.RoleId,
-                RoleName = role?.Name ?? "user",
+                UserId = user.user_id,
+                FullName = user.full_name,
+                Email = user.email,
+                RoleId = user.role_id,
+                RoleName = role?.name ?? "user",
                 AccessToken = jwtResult.Token,
                 RefreshToken = string.Empty, // Not using refresh tokens for now
                 ExpiresAt = jwtResult.ExpiresAtUtc
             };
 
             _logger.LogInformation("Google authentication successful - UserId: {UserId}, IsNewUser: {IsNewUser}", 
-                user.UserId, isNewUser);
+                user.user_id, isNewUser);
 
             return new ServiceResult
             {

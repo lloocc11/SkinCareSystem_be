@@ -201,7 +201,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            instance.Status = "deleted";
+            instance.status = "deleted";
             await _unitOfWork.RoutineInstanceRepository.UpdateAsync(instance);
             await _unitOfWork.SaveAsync();
 

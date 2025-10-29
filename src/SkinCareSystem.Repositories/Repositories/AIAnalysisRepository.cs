@@ -10,24 +10,24 @@ using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Repositories.Repositories
 {
-    public class AIAnalysisRepository : GenericRepository<Aianalysis>, IAIAnalysisRepository
+    public class AIAnalysisRepository : GenericRepository<AIAnalysis>, IAIAnalysisRepository
     {
         public AIAnalysisRepository(SkinCareSystemDbContext context) : base(context)
         {
         }
 
-        public async Task<Aianalysis?> GetByMessageIdAsync(Guid messageId)
+        public async Task<AIAnalysis?> GetByMessageIdAsync(Guid messageId)
         {
-            return await _context.Aianalyses
+            return await _context.AIAnalyses
                 .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.ChatMessageId == messageId);
+                .FirstOrDefaultAsync(a => a.chat_message_id == messageId);
         }
 
-        public async Task<IReadOnlyList<Aianalysis>> GetBySessionAsync(Guid sessionId)
+        public async Task<IReadOnlyList<AIAnalysis>> GetBySessionAsync(Guid sessionId)
         {
-            return await _context.Aianalyses
+            return await _context.AIAnalyses
                 .AsNoTracking()
-                .Where(a => a.ChatMessage.SessionId == sessionId)
+                .Where(a => a.chat_message.session_id == sessionId)
                 .ToListAsync();
         }
     }

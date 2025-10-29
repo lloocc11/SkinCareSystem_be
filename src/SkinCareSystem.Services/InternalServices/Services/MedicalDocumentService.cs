@@ -82,7 +82,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 await _unitOfWork.MedicalDocuments.CreateAsync(document);
                 await _unitOfWork.SaveAsync();
 
-                var created = await _unitOfWork.MedicalDocuments.GetByIdWithDetailsAsync(document.DocId);
+                var created = await _unitOfWork.MedicalDocuments.GetByIdWithDetailsAsync(document.doc_id);
                 return new ServiceResult(Const.SUCCESS_CREATE_CODE, Const.SUCCESS_CREATE_MSG, created?.ToDto());
             }
             catch (Exception ex)

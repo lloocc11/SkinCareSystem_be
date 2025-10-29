@@ -1,4 +1,5 @@
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -69,6 +70,29 @@ namespace SkinCareSystem.APIService.Controllers
         public async Task<IActionResult> GetMessage(Guid messageId)
         {
             var result = await _chatMessageService.GetMessageAsync(messageId);
+            return ToHttpResponse(result);
+        }
+
+        /// <summary>
+        /// POST /api/chat/sessions/{sessionId}/messages/upload - Upload image message (Cloudinary fallback local).
+        /// </summary>
+        [HttpPost("sessions/{sessionId:guid}/messages/upload")]
+        [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
+        [RequestSizeLimit(104857600)]
+        public async Task<IActionResult> UploadMessage(Guid sessionId,  IFormFile file,  string role = "user", [FromQuery] string? messageType = null)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return ToHttpResponse(new ServiceResult(Const.ERROR_INVALID_DATA_CODE, "Image file is required."));
+            }
+
+            var userClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userClaim, out var userId))
+            {
+                return ToHttpResponse(new ServiceResult(Const.UNAUTHORIZED_ACCESS_CODE, Const.UNAUTHORIZED_ACCESS_MSG));
+            }
+
+            var result = await _chatMessageService.UploadImageMessageAsync(sessionId, userId, role, file, messageType);
             return ToHttpResponse(result);
         }
     }

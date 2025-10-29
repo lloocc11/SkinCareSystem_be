@@ -10,33 +10,33 @@ using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Repositories.Repositories
 {
-    public class AIResponseRepository : GenericRepository<Airesponse>, IAIResponseRepository
+    public class AIResponseRepository : GenericRepository<AIResponse>, IAIResponseRepository
     {
         public AIResponseRepository(SkinCareSystemDbContext context) : base(context)
         {
         }
 
-        public async Task<IReadOnlyList<Airesponse>> GetByQueryAsync(Guid queryId)
+        public async Task<IReadOnlyList<AIResponse>> GetByQueryAsync(Guid queryId)
         {
-            return await _context.Airesponses
+            return await _context.AIResponses
                 .AsNoTracking()
-                .Where(r => r.QueryId == queryId)
-                .OrderBy(r => r.CreatedAt)
+                .Where(r => r.query_id == queryId)
+                .OrderBy(r => r.created_at)
                 .ToListAsync();
         }
 
-        public async Task<IReadOnlyList<Airesponse>> GetByQueryIdsAsync(IEnumerable<Guid> queryIds)
+        public async Task<IReadOnlyList<AIResponse>> GetByQueryIdsAsync(IEnumerable<Guid> queryIds)
         {
             var ids = queryIds?.ToList() ?? new List<Guid>();
             if (ids.Count == 0)
             {
-                return Array.Empty<Airesponse>();
+                return Array.Empty<AIResponse>();
             }
 
-            return await _context.Airesponses
+            return await _context.AIResponses
                 .AsNoTracking()
-                .Where(r => ids.Contains(r.QueryId))
-                .OrderBy(r => r.CreatedAt)
+                .Where(r => ids.Contains(r.query_id))
+                .OrderBy(r => r.created_at)
                 .ToListAsync();
         }
 

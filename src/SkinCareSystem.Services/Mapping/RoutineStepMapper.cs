@@ -15,12 +15,12 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RoutineStepDto
             {
-                StepId = step.StepId,
-                RoutineId = step.RoutineId,
-                StepOrder = step.StepOrder,
-                Instruction = step.Instruction,
-                TimeOfDay = step.TimeOfDay,
-                Frequency = step.Frequency
+                StepId = step.step_id,
+                RoutineId = step.routine_id,
+                StepOrder = step.step_order,
+                Instruction = step.instruction,
+                TimeOfDay = step.time_of_day,
+                Frequency = step.frequency
             };
         }
 
@@ -30,12 +30,12 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RoutineStep
             {
-                StepId = Guid.NewGuid(),
-                RoutineId = dto.RoutineId,
-                StepOrder = dto.StepOrder,
-                Instruction = dto.Instruction,
-                TimeOfDay = dto.TimeOfDay,
-                Frequency = dto.Frequency
+                step_id = Guid.NewGuid(),
+                routine_id = dto.RoutineId,
+                step_order = dto.StepOrder,
+                instruction = dto.Instruction,
+                time_of_day = dto.TimeOfDay,
+                frequency = dto.Frequency
             };
         }
 
@@ -46,22 +46,22 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.StepOrder.HasValue)
             {
-                step.StepOrder = dto.StepOrder.Value;
+                step.step_order = dto.StepOrder.Value;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Instruction))
             {
-                step.Instruction = dto.Instruction;
+                step.instruction = dto.Instruction;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.TimeOfDay))
             {
-                step.TimeOfDay = dto.TimeOfDay;
+                step.time_of_day = dto.TimeOfDay;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Frequency))
             {
-                step.Frequency = dto.Frequency;
+                step.frequency = dto.Frequency;
             }
         }
     }

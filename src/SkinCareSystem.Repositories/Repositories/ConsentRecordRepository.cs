@@ -20,9 +20,9 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<ConsentRecord>()
                 .AsNoTracking()
-                .Include(cr => cr.User)
-                .Where(cr => cr.UserId == userId)
-                .OrderByDescending(cr => cr.GivenAt)
+                .Include(cr => cr.user)
+                .Where(cr => cr.user_id == userId)
+                .OrderByDescending(cr => cr.given_at)
                 .ToListAsync();
         }
 
@@ -30,8 +30,8 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<ConsentRecord>()
                 .AsNoTracking()
-                .Include(cr => cr.User)
-                .FirstOrDefaultAsync(cr => cr.ConsentId == consentId);
+                .Include(cr => cr.user)
+                .FirstOrDefaultAsync(cr => cr.consent_id == consentId);
         }
     }
 }

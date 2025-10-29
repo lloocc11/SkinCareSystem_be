@@ -20,9 +20,9 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RoutineStep>()
                 .AsNoTracking()
-                .Include(rs => rs.Routine)
-                .Where(rs => rs.RoutineId == routineId)
-                .OrderBy(rs => rs.StepOrder)
+                .Include(rs => rs.routine)
+                .Where(rs => rs.routine_id == routineId)
+                .OrderBy(rs => rs.step_order)
                 .ToListAsync();
         }
 
@@ -30,8 +30,8 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RoutineStep>()
                 .AsNoTracking()
-                .Include(rs => rs.Routine)
-                .FirstOrDefaultAsync(rs => rs.StepId == stepId);
+                .Include(rs => rs.routine)
+                .FirstOrDefaultAsync(rs => rs.step_id == stepId);
         }
     }
 }

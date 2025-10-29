@@ -11,5 +11,6 @@ namespace SkinCareSystem.Services.InternalServices.IServices
         Task<IServiceResult> GetSessionAsync(Guid sessionId, bool includeMessages = false);
         Task<IServiceResult> GetSessionsAsync(Guid? userId, int pageNumber, int pageSize);
         Task<IServiceResult> UpdateSessionAsync(Guid sessionId, ChatSessionUpdateDto dto);
+        Task<IServiceResult> DeleteSessionAsync(Guid sessionId);
     }
 }

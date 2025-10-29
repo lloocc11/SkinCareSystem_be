@@ -15,11 +15,11 @@ namespace SkinCareSystem.Services.Mapping
 
             return new SymptomDto
             {
-                SymptomId = symptom.SymptomId,
-                Name = symptom.Name,
-                Description = symptom.Description,
-                ExampleImageUrl = symptom.ExampleImageUrl,
-                CreatedAt = symptom.CreatedAt
+                SymptomId = symptom.symptom_id,
+                Name = symptom.name,
+                Description = symptom.description,
+                ExampleImageUrl = symptom.example_image_url,
+                CreatedAt = symptom.created_at
             };
         }
 
@@ -29,11 +29,11 @@ namespace SkinCareSystem.Services.Mapping
 
             return new Symptom
             {
-                SymptomId = Guid.NewGuid(),
-                Name = dto.Name,
-                Description = dto.Description,
-                ExampleImageUrl = dto.ExampleImageUrl,
-                CreatedAt = DateTime.Now
+                symptom_id = Guid.NewGuid(),
+                name = dto.Name,
+                description = dto.Description,
+                example_image_url = dto.ExampleImageUrl,
+                created_at = DateTime.Now
             };
         }
 
@@ -44,17 +44,17 @@ namespace SkinCareSystem.Services.Mapping
 
             if (!string.IsNullOrWhiteSpace(dto.Name))
             {
-                symptom.Name = dto.Name;
+                symptom.name = dto.Name;
             }
 
             if (dto.Description != null)
             {
-                symptom.Description = dto.Description;
+                symptom.description = dto.Description;
             }
 
             if (dto.ExampleImageUrl != null)
             {
-                symptom.ExampleImageUrl = dto.ExampleImageUrl;
+                symptom.example_image_url = dto.ExampleImageUrl;
             }
         }
     }

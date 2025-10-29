@@ -64,7 +64,7 @@ namespace SkinCareSystem.APIService.Controllers
         [HttpPost("{documentId:guid}/upload")]
         [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
         [RequestSizeLimit(104857600)]
-        public async Task<IActionResult> UploadAsset(Guid documentId, [FromForm] IFormFile file, CancellationToken cancellationToken)
+        public async Task<IActionResult> UploadAsset(Guid documentId, IFormFile file, CancellationToken cancellationToken)
         {
             if (file == null || file.Length == 0)
             {

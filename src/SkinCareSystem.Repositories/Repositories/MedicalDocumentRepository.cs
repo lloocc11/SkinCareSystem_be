@@ -22,7 +22,7 @@ namespace SkinCareSystem.Repositories.Repositories
                 .AsNoTracking()
                 .Include(md => md.DocumentChunks)
                 .Include(md => md.MedicalDocumentAssets)
-                .FirstOrDefaultAsync(md => md.DocId == docId);
+                .FirstOrDefaultAsync(md => md.doc_id == docId);
         }
     }
 
@@ -36,9 +36,9 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<DocumentChunk>()
                 .AsNoTracking()
-                .Include(dc => dc.Doc)
-                .Where(dc => dc.DocId == docId)
-                .OrderBy(dc => dc.CreatedAt)
+                .Include(dc => dc.doc)
+                .Where(dc => dc.doc_id == docId)
+                .OrderBy(dc => dc.created_at)
                 .ToListAsync();
         }
 
@@ -46,8 +46,8 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<DocumentChunk>()
                 .AsNoTracking()
-                .Include(dc => dc.Doc)
-                .FirstOrDefaultAsync(dc => dc.ChunkId == chunkId);
+                .Include(dc => dc.doc)
+                .FirstOrDefaultAsync(dc => dc.chunk_id == chunkId);
         }
     }
 
