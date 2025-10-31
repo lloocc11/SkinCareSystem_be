@@ -38,7 +38,7 @@ namespace SkinCareSystem.Services.Mapping
                 start_date = dto.StartDate,
                 end_date = dto.EndDate,
                 status = dto.Status ?? "active",
-                created_at = DateTime.Now
+                created_at = DateTime.UtcNow
             };
         }
 

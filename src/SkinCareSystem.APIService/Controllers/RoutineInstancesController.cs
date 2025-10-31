@@ -24,16 +24,23 @@ namespace SkinCareSystem.APIService.Controllers
         [HttpGet("user/{userId:guid}")]
         public async Task<IActionResult> GetByUser(Guid userId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var isAdmin = User.IsInRole("admin");
 
-            if (!isAdmin && (!Guid.TryParse(userIdClaim, out var requesterId) || requesterId != userId))
+            if (!isAdmin)
             {
-                return ToHttpResponse(new ServiceResult
+                if (!TryGetRequester(out var requesterId, out var errorResult))
                 {
-                    Status = Const.UNAUTHORIZED_ACCESS_CODE,
-                    Message = Const.UNAUTHORIZED_ACCESS_MSG
-                });
+                    return errorResult!;
+                }
+
+                if (requesterId != userId)
+                {
+                    return ToHttpResponse(new ServiceResult
+                    {
+                        Status = Const.UNAUTHORIZED_ACCESS_CODE,
+                        Message = Const.UNAUTHORIZED_ACCESS_MSG
+                    });
+                }
             }
 
             var result = await _routineInstanceService.GetRoutineInstancesByUserAsync(userId, pageNumber, pageSize);
@@ -50,7 +57,25 @@ namespace SkinCareSystem.APIService.Controllers
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
+            var isAdmin = User.IsInRole("admin");
+            Guid requesterId = Guid.Empty;
+
+            if (!isAdmin && !TryGetRequester(out requesterId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
             var result = await _routineInstanceService.GetRoutineInstanceByIdAsync(id);
+
+            if (!isAdmin && result.Status == Const.SUCCESS_READ_CODE && result.Data is RoutineInstanceDto dto && dto.UserId != requesterId)
+            {
+                return ToHttpResponse(new ServiceResult
+                {
+                    Status = Const.FORBIDDEN_ACCESS_CODE,
+                    Message = Const.FORBIDDEN_ACCESS_MSG
+                });
+            }
+
             return ToHttpResponse(result);
         }
 
@@ -66,19 +91,48 @@ namespace SkinCareSystem.APIService.Controllers
                 });
             }
 
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var isAdmin = User.IsInRole("admin");
 
-            if (!isAdmin && (!Guid.TryParse(userIdClaim, out var requesterId) || requesterId != dto.UserId))
+            if (!isAdmin)
             {
-                return ToHttpResponse(new ServiceResult
+                if (!TryGetRequester(out var requesterId, out var errorResult))
                 {
-                    Status = Const.UNAUTHORIZED_ACCESS_CODE,
-                    Message = Const.UNAUTHORIZED_ACCESS_MSG
-                });
+                    return errorResult!;
+                }
+
+                if (requesterId != dto.UserId)
+                {
+                    return ToHttpResponse(new ServiceResult
+                    {
+                        Status = Const.UNAUTHORIZED_ACCESS_CODE,
+                        Message = Const.UNAUTHORIZED_ACCESS_MSG
+                    });
+                }
             }
 
             var result = await _routineInstanceService.CreateRoutineInstanceAsync(dto);
+            var location = result.Data is RoutineInstanceDto created ? $"/api/routine-instances/{created.InstanceId}" : null;
+            return ToHttpResponse(result, location);
+        }
+
+        [HttpPost("routine/{routineId:guid}/start")]
+        public async Task<IActionResult> StartRoutine(Guid routineId, [FromBody] RoutineInstanceStartRequestDto? dto)
+        {
+            if (!TryGetRequester(out var requesterId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var createDto = new RoutineInstanceCreateDto
+            {
+                RoutineId = routineId,
+                UserId = requesterId,
+                StartDate = dto?.StartDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+                EndDate = dto?.EndDate,
+                Status = "active"
+            };
+
+            var result = await _routineInstanceService.CreateRoutineInstanceAsync(createDto);
             var location = result.Data is RoutineInstanceDto created ? $"/api/routine-instances/{created.InstanceId}" : null;
             return ToHttpResponse(result, location);
         }
@@ -95,6 +149,30 @@ namespace SkinCareSystem.APIService.Controllers
                 });
             }
 
+            var isAdmin = User.IsInRole("admin");
+            if (!isAdmin)
+            {
+                if (!TryGetRequester(out var requesterId, out var errorResult))
+                {
+                    return errorResult!;
+                }
+
+                var existingResult = await _routineInstanceService.GetRoutineInstanceByIdAsync(id);
+                if (existingResult.Status != Const.SUCCESS_READ_CODE)
+                {
+                    return ToHttpResponse(existingResult);
+                }
+
+                if (existingResult.Data is RoutineInstanceDto dtoData && dtoData.UserId != requesterId)
+                {
+                    return ToHttpResponse(new ServiceResult
+                    {
+                        Status = Const.FORBIDDEN_ACCESS_CODE,
+                        Message = Const.FORBIDDEN_ACCESS_MSG
+                    });
+                }
+            }
+
             var result = await _routineInstanceService.UpdateRoutineInstanceAsync(id, dto);
             return ToHttpResponse(result);
         }
@@ -102,8 +180,51 @@ namespace SkinCareSystem.APIService.Controllers
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {
+            var isAdmin = User.IsInRole("admin");
+            if (!isAdmin)
+            {
+                if (!TryGetRequester(out var requesterId, out var errorResult))
+                {
+                    return errorResult!;
+                }
+
+                var existingResult = await _routineInstanceService.GetRoutineInstanceByIdAsync(id);
+                if (existingResult.Status != Const.SUCCESS_READ_CODE)
+                {
+                    return ToHttpResponse(existingResult);
+                }
+
+                if (existingResult.Data is RoutineInstanceDto dtoData && dtoData.UserId != requesterId)
+                {
+                    return ToHttpResponse(new ServiceResult
+                    {
+                        Status = Const.FORBIDDEN_ACCESS_CODE,
+                        Message = Const.FORBIDDEN_ACCESS_MSG
+                    });
+                }
+            }
+
             var result = await _routineInstanceService.DeleteRoutineInstanceAsync(id);
             return ToHttpResponse(result);
+        }
+
+        private bool TryGetRequester(out Guid requesterId, out IActionResult? errorResult)
+        {
+            requesterId = Guid.Empty;
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!Guid.TryParse(userIdClaim, out requesterId))
+            {
+                errorResult = ToHttpResponse(new ServiceResult
+                {
+                    Status = Const.UNAUTHORIZED_ACCESS_CODE,
+                    Message = Const.UNAUTHORIZED_ACCESS_MSG
+                });
+                return false;
+            }
+
+            errorResult = null;
+            return true;
         }
     }
 }

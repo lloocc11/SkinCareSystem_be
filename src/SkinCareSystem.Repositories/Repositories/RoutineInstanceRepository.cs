@@ -56,5 +56,18 @@ namespace SkinCareSystem.Repositories.Repositories
                 .Include(ri => ri.routine)
                 .FirstOrDefaultAsync(ri => ri.instance_id == instanceId);
         }
+
+        public async Task<RoutineInstance?> GetActiveInstanceAsync(Guid userId, Guid routineId)
+        {
+            var inactiveStatuses = new[] { "completed", "deleted", "cancelled" };
+
+            return await _context.Set<RoutineInstance>()
+                .AsNoTracking()
+                .Where(ri => ri.user_id == userId
+                             && ri.routine_id == routineId
+                             && !inactiveStatuses.Contains(ri.status))
+                .OrderByDescending(ri => ri.created_at ?? DateTime.MinValue)
+                .FirstOrDefaultAsync();
+        }
     }
 }

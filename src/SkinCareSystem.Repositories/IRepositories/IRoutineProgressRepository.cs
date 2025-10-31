@@ -10,5 +10,6 @@ namespace SkinCareSystem.Repositories.IRepositories
     {
         Task<IReadOnlyList<RoutineProgress>> GetByInstanceIdAsync(Guid instanceId);
         Task<RoutineProgress?> GetByIdWithDetailsAsync(Guid progressId);
+        Task<RoutineProgress?> GetByInstanceStepAndDateAsync(Guid instanceId, Guid stepId, DateOnly date);
     }
 }
