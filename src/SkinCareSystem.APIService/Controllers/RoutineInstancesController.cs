@@ -20,7 +20,13 @@ namespace SkinCareSystem.APIService.Controllers
         {
             _routineInstanceService = routineInstanceService ?? throw new ArgumentNullException(nameof(routineInstanceService));
         }
-
+        /// <summary>
+        /// GET /api/routine-instances/user/{userId} - Get routine instances by user ID
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="pageNumber"></param>
+        /// <param name="pageSize"></param>
+        /// <returns></returns>
         [HttpGet("user/{userId:guid}")]
         public async Task<IActionResult> GetByUser(Guid userId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -46,14 +52,18 @@ namespace SkinCareSystem.APIService.Controllers
             var result = await _routineInstanceService.GetRoutineInstancesByUserAsync(userId, pageNumber, pageSize);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// GET /api/routine-instances/routine/{routineId} - Get routine instances by routine ID
+        /// </summary>
         [HttpGet("routine/{routineId:guid}")]
         public async Task<IActionResult> GetByRoutine(Guid routineId)
         {
             var result = await _routineInstanceService.GetRoutineInstancesByRoutineAsync(routineId);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// GET /api/routine-instances/{id} - Get routine instance by ID
+        /// </summary>
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -78,7 +88,9 @@ namespace SkinCareSystem.APIService.Controllers
 
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// POST /api/routine-instances - Create a new routine instance
+        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] RoutineInstanceCreateDto dto)
         {
@@ -114,7 +126,9 @@ namespace SkinCareSystem.APIService.Controllers
             var location = result.Data is RoutineInstanceDto created ? $"/api/routine-instances/{created.InstanceId}" : null;
             return ToHttpResponse(result, location);
         }
-
+        /// <summary>
+        /// POST /api/routine-instances/routine/{routineId}/start - Start a new routine instance for the authenticated user
+        /// </summary>
         [HttpPost("routine/{routineId:guid}/start")]
         public async Task<IActionResult> StartRoutine(Guid routineId, [FromBody] RoutineInstanceStartRequestDto? dto)
         {
@@ -136,7 +150,9 @@ namespace SkinCareSystem.APIService.Controllers
             var location = result.Data is RoutineInstanceDto created ? $"/api/routine-instances/{created.InstanceId}" : null;
             return ToHttpResponse(result, location);
         }
-
+        /// <summary>
+        /// PUT /api/routine-instances/{id} - Update an existing routine instance
+        /// </summary>
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(Guid id, [FromBody] RoutineInstanceUpdateDto dto)
         {
@@ -176,7 +192,9 @@ namespace SkinCareSystem.APIService.Controllers
             var result = await _routineInstanceService.UpdateRoutineInstanceAsync(id, dto);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// DELETE /api/routine-instances/{id} - Delete a routine instance
+        /// </summary>
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {

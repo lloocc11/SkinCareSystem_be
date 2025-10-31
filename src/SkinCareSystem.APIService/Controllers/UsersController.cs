@@ -82,7 +82,9 @@ namespace SkinCareSystem.APIService.Controllers
             var location = result.Data is UserDto created ? $"/api/users/{created.UserId}" : null;
             return ToHttpResponse(result, location);
         }
-
+        /// <summary>
+        /// PUT /api/users/{id} - Update an existing user (admin only)
+        /// </summary>
         [HttpPut("{id:guid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UserUpdateDto dto)
@@ -99,12 +101,42 @@ namespace SkinCareSystem.APIService.Controllers
             var result = await _userService.UpdateUserAsync(id, dto);
             return ToHttpResponse(result);
         }
-
+        /// <summary>
+        /// DELETE /api/users/{id} - Soft delete a user (admin only)
+        /// </summary>
         [HttpDelete("{id:guid}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> SoftDelete(Guid id)
         {
             var result = await _userService.SoftDeleteUserAsync(id);
+            return ToHttpResponse(result);
+        }
+        /// <summary>
+        /// PUT /api/users/{id}/profile - Update current authenticated user's profile
+        /// </summary>
+        [HttpPut("{id:guid}/profile")]
+        public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] UserUpdateDto dto)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdClaim, out var requesterId) || requesterId != id)
+            {
+                return ToHttpResponse(new ServiceResult
+                {
+                    Status = Const.UNAUTHORIZED_ACCESS_CODE,
+                    Message = Const.UNAUTHORIZED_ACCESS_MSG
+                });
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return ToHttpResponse(new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = Const.ERROR_INVALID_DATA_MSG
+                });
+            }
+
+            var result = await _userService.UpdateUserAsync(id, dto);
             return ToHttpResponse(result);
         }
     }
