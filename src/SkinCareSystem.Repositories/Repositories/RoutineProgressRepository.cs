@@ -35,5 +35,20 @@ namespace SkinCareSystem.Repositories.Repositories
                 .Include(rp => rp.step)
                 .FirstOrDefaultAsync(rp => rp.progress_id == progressId);
         }
+
+        public async Task<RoutineProgress?> GetByInstanceStepAndDateAsync(Guid instanceId, Guid stepId, DateOnly date)
+        {
+            var startOfDay = date.ToDateTime(TimeOnly.MinValue);
+            var endOfDay = startOfDay.AddDays(1);
+
+            return await _context.Set<RoutineProgress>()
+                .AsNoTracking()
+                .Where(rp => rp.instance_id == instanceId
+                             && rp.step_id == stepId
+                             && rp.completed_at >= startOfDay
+                             && rp.completed_at < endOfDay)
+                .OrderByDescending(rp => rp.completed_at)
+                .FirstOrDefaultAsync();
+        }
     }
 }

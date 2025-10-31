@@ -6,5 +6,10 @@ namespace SkinCareSystem.Services.Consultations;
 
 public interface ISimpleConsultationService
 {
-    Task<SimpleConsultationResponse> GenerateAdviceAsync(Guid userId, string text, string? imageUrl, CancellationToken ct = default);
+    Task<SimpleConsultationResult> GenerateAdviceAsync(
+        Guid userId,
+        string text,
+        string? imageUrl,
+        bool generateRoutine,
+        CancellationToken ct = default);
 }

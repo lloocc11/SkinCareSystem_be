@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -15,6 +16,14 @@ namespace SkinCareSystem.Services.InternalServices.Services
     public class RoutineInstanceService : IRoutineInstanceService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "active",
+            "paused",
+            "completed",
+            "cancelled",
+            "deleted"
+        };
 
         public RoutineInstanceService(IUnitOfWork unitOfWork)
         {
@@ -153,6 +162,43 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
+            var normalizedStatus = NormalizeStatus(dto.Status ?? "active");
+
+            if (!AllowedStatuses.Contains(normalizedStatus))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = $"Invalid routine instance status '{dto.Status}'."
+                };
+            }
+
+            var startDate = dto.StartDate == default
+                ? DateOnly.FromDateTime(DateTime.UtcNow)
+                : dto.StartDate;
+
+            if (dto.EndDate.HasValue && dto.EndDate.Value < startDate)
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "End date cannot be before start date"
+                };
+            }
+
+            var existingInstance = await _unitOfWork.RoutineInstanceRepository.GetActiveInstanceAsync(dto.UserId, dto.RoutineId);
+            if (existingInstance != null)
+            {
+                return new ServiceResult
+                {
+                    Status = Const.WARNING_DATA_EXISTED_CODE,
+                    Message = "An active routine instance already exists for this routine"
+                };
+            }
+
+            dto.StartDate = startDate;
+            dto.Status = normalizedStatus;
+
             var entity = dto.ToEntity();
             await _unitOfWork.RoutineInstanceRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
@@ -177,7 +223,36 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            instance.ApplyUpdate(dto);
+            if (dto.EndDate.HasValue && dto.EndDate.Value < instance.start_date)
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "End date cannot be before start date"
+                };
+            }
+
+            string? sanitizedStatus = null;
+            if (!string.IsNullOrWhiteSpace(dto.Status))
+            {
+                sanitizedStatus = NormalizeStatus(dto.Status);
+                if (!AllowedStatuses.Contains(sanitizedStatus))
+                {
+                    return new ServiceResult
+                    {
+                        Status = Const.ERROR_VALIDATION_CODE,
+                        Message = $"Invalid routine instance status '{dto.Status}'."
+                    };
+                }
+            }
+
+            var updateDto = new RoutineInstanceUpdateDto
+            {
+                EndDate = dto.EndDate,
+                Status = sanitizedStatus
+            };
+
+            instance.ApplyUpdate(updateDto);
             await _unitOfWork.RoutineInstanceRepository.UpdateAsync(instance);
             await _unitOfWork.SaveAsync();
 
@@ -202,6 +277,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             }
 
             instance.status = "deleted";
+            instance.end_date ??= DateOnly.FromDateTime(DateTime.UtcNow);
             await _unitOfWork.RoutineInstanceRepository.UpdateAsync(instance);
             await _unitOfWork.SaveAsync();
 
@@ -211,6 +287,13 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 Message = Const.SUCCESS_DELETE_MSG,
                 Data = instance.ToDto()
             };
+        }
+
+        private static string NormalizeStatus(string status)
+        {
+            return string.IsNullOrWhiteSpace(status)
+                ? "active"
+                : status.Trim().ToLowerInvariant();
         }
     }
 }

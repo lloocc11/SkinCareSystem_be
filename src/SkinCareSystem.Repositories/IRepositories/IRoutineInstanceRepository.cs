@@ -12,5 +12,6 @@ namespace SkinCareSystem.Repositories.IRepositories
         Task<int> CountByUserIdAsync(Guid userId);
         Task<IReadOnlyList<RoutineInstance>> GetByRoutineIdAsync(Guid routineId);
         Task<RoutineInstance?> GetByIdWithDetailsAsync(Guid instanceId);
+        Task<RoutineInstance?> GetActiveInstanceAsync(Guid userId, Guid routineId);
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,14 +24,39 @@ namespace SkinCareSystem.APIService.Controllers
         [HttpGet("instance/{instanceId:guid}")]
         public async Task<IActionResult> GetByInstance(Guid instanceId)
         {
-            var result = await _routineProgressService.GetRoutineProgressByInstanceAsync(instanceId);
+            if (!TryGetRequester(out var requesterId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var isAdmin = User.IsInRole("admin");
+            var result = await _routineProgressService.GetRoutineProgressByInstanceAsync(instanceId, requesterId, isAdmin);
+            return ToHttpResponse(result);
+        }
+
+        [HttpGet("instance/{instanceId:guid}/log")]
+        public async Task<IActionResult> GetLog(Guid instanceId)
+        {
+            if (!TryGetRequester(out var requesterId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var isAdmin = User.IsInRole("admin");
+            var result = await _routineProgressService.GetRoutineProgressLogAsync(instanceId, requesterId, isAdmin);
             return ToHttpResponse(result);
         }
 
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
-            var result = await _routineProgressService.GetRoutineProgressByIdAsync(id);
+            if (!TryGetRequester(out var requesterId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var isAdmin = User.IsInRole("admin");
+            var result = await _routineProgressService.GetRoutineProgressByIdAsync(id, requesterId, isAdmin);
             return ToHttpResponse(result);
         }
 
@@ -46,7 +72,13 @@ namespace SkinCareSystem.APIService.Controllers
                 });
             }
 
-            var result = await _routineProgressService.CreateRoutineProgressAsync(dto);
+            if (!TryGetRequester(out var requesterId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var isAdmin = User.IsInRole("admin");
+            var result = await _routineProgressService.CreateRoutineProgressAsync(requesterId, isAdmin, dto);
             var location = result.Data is RoutineProgressDto created ? $"/api/routine-progress/{created.ProgressId}" : null;
             return ToHttpResponse(result, location);
         }
@@ -63,15 +95,46 @@ namespace SkinCareSystem.APIService.Controllers
                 });
             }
 
-            var result = await _routineProgressService.UpdateRoutineProgressAsync(id, dto);
+            if (!TryGetRequester(out var requesterId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var isAdmin = User.IsInRole("admin");
+            var result = await _routineProgressService.UpdateRoutineProgressAsync(id, requesterId, isAdmin, dto);
             return ToHttpResponse(result);
         }
 
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id)
         {
-            var result = await _routineProgressService.DeleteRoutineProgressAsync(id);
+            if (!TryGetRequester(out var requesterId, out var errorResult))
+            {
+                return errorResult!;
+            }
+
+            var isAdmin = User.IsInRole("admin");
+            var result = await _routineProgressService.DeleteRoutineProgressAsync(id, requesterId, isAdmin);
             return ToHttpResponse(result);
+        }
+
+        private bool TryGetRequester(out Guid requesterId, out IActionResult? errorResult)
+        {
+            requesterId = Guid.Empty;
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!Guid.TryParse(userIdClaim, out requesterId))
+            {
+                errorResult = ToHttpResponse(new ServiceResult
+                {
+                    Status = Const.UNAUTHORIZED_ACCESS_CODE,
+                    Message = Const.UNAUTHORIZED_ACCESS_MSG
+                });
+                return false;
+            }
+
+            errorResult = null;
+            return true;
         }
     }
 }

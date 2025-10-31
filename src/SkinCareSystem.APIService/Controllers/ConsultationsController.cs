@@ -147,15 +147,23 @@ public sealed class ConsultationsController : BaseApiController
         try
         {
             var imageUrl = await ResolveImageUrlAsync(form, cancellationToken).ConfigureAwait(false);
+            var generateRoutine = ShouldGenerateRoutine(form);
             var response = await _simpleConsultationService
-                .GenerateAdviceAsync(userId, form.Text, imageUrl, cancellationToken)
+                .GenerateAdviceAsync(userId, form.Text, imageUrl, generateRoutine, cancellationToken)
                 .ConfigureAwait(false);
+
+            using var document = JsonDocument.Parse(response.Json);
+            var advice = document.RootElement.Clone();
 
             var payload = new
             {
-                response.Advice,
+                response.AnalysisId,
+                response.RoutineId,
+                response.RoutineGenerated,
+                response.Confidence,
                 response.Model,
-                response.GeneratedAt
+                response.GeneratedAt,
+                advice
             };
 
             var success = new ServiceResult(Const.SUCCESS_CREATE_CODE, "Tư vấn AI đã sẵn sàng.", payload);
