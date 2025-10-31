@@ -130,13 +130,16 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct).ConfigureAwait(false);
 
+        var nowUtc = DateTime.UtcNow;
+        var nowTimestamp = ToDatabaseTimestamp(nowUtc);
+
         var session = new ChatSession
         {
             session_id = Guid.NewGuid(),
             user_id = userId,
-            title = $"Tư vấn {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
-            created_at = DateTime.UtcNow,
-            updated_at = DateTime.UtcNow
+            title = $"Tư vấn {nowUtc:yyyy-MM-dd HH:mm}",
+            created_at = nowTimestamp,
+            updated_at = nowTimestamp
         };
         _dbContext.ChatSessions.Add(session);
 
@@ -149,7 +152,7 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
             image_url = imageUrl,
             message_type = DetermineMessageType(text, imageUrl),
             role = "user",
-            created_at = DateTime.UtcNow
+            created_at = nowTimestamp
         };
         _dbContext.ChatMessages.Add(message);
 
@@ -161,8 +164,8 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
             raw_input = text,
             result = resultJson,
             confidence = confidence,
-            created_at = DateTime.UtcNow,
-            updated_at = DateTime.UtcNow
+            created_at = nowTimestamp,
+            updated_at = nowTimestamp
         };
         _dbContext.AIAnalyses.Add(analysis);
 
@@ -178,8 +181,8 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
                 description = routineDescription,
                 status = "active",
                 version = 1,
-                created_at = DateTime.UtcNow,
-                updated_at = DateTime.UtcNow
+                created_at = nowTimestamp,
+                updated_at = nowTimestamp
             };
             _dbContext.Routines.Add(routine);
 
@@ -374,6 +377,14 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
         }
 
         return steps;
+    }
+
+    private static DateTime ToDatabaseTimestamp(DateTime value)
+    {
+        // PostgreSQL timestamp without time zone expects DateTime values with an unspecified kind.
+        return value.Kind == DateTimeKind.Unspecified
+            ? value
+            : DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
     }
 
     private static string DetermineMessageType(string text, string? imageUrl)

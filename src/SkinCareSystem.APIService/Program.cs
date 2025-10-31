@@ -15,6 +15,7 @@ using SkinCareSystem.Repositories.DBContext;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.ExternalServices.IServices;
 using SkinCareSystem.Services.ExternalServices.Services;
+using SkinCareSystem.Services.Consultations;
 using SkinCareSystem.Services.InternalServices.IServices;
 using SkinCareSystem.Services.InternalServices.Services;
 using SkinCareSystem.Services.Options;
@@ -40,6 +41,7 @@ builder.Services.AddScoped<IChatSessionService, ChatSessionService>();
 builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
 builder.Services.AddScoped<IAIAnalysisService, AIAnalysisService>();
 builder.Services.AddScoped<IAIResponseService, AIResponseService>();
+builder.Services.AddScoped<ISimpleConsultationService, SimpleConsultationService>();
 
 // Routine Services
 builder.Services.AddScoped<IRoutineService, RoutineService>();
@@ -264,7 +266,7 @@ static async Task SeedAdminUserAsync(IServiceProvider serviceProvider)
             {
                 existingAdmin.role_id = adminRole.role_id;
                 existingAdmin.status = "active";
-                existingAdmin.updated_at = DateTime.UtcNow;
+                existingAdmin.updated_at = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
                 await context.SaveChangesAsync();
                 logger.LogInformation("Promoted user {Email} to admin role", existingAdmin.email);
             }
