@@ -36,7 +36,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             try
             {
                 var query = _unitOfWork.RuleRepository.GetAllQueryable()
-                    .OrderByDescending(r => r.CreatedAt);
+                    .OrderByDescending(r => r.created_at);
 
                 var totalItems = await query.CountAsync();
                 if (totalItems == 0)

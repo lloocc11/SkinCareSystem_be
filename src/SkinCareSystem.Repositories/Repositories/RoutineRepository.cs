@@ -20,11 +20,11 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<Routine>()
                 .AsNoTracking()
-                .Include(r => r.User)
-                .Include(r => r.Analysis)
-                .Include(r => r.ParentRoutine)
-                .Where(r => r.UserId == userId)
-                .OrderByDescending(r => r.CreatedAt)
+                .Include(r => r.user)
+                .Include(r => r.analysis)
+                .Include(r => r.parent_routine)
+                .Where(r => r.user_id == userId)
+                .OrderByDescending(r => r.created_at)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -34,7 +34,7 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<Routine>()
                 .AsNoTracking()
-                .Where(r => r.UserId == userId)
+                .Where(r => r.user_id == userId)
                 .CountAsync();
         }
 
@@ -42,11 +42,11 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<Routine>()
                 .AsNoTracking()
-                .Include(r => r.User)
-                .Include(r => r.Analysis)
-                .Include(r => r.ParentRoutine)
+                .Include(r => r.user)
+                .Include(r => r.analysis)
+                .Include(r => r.parent_routine)
                 .Include(r => r.RoutineSteps)
-                .FirstOrDefaultAsync(r => r.RoutineId == routineId);
+                .FirstOrDefaultAsync(r => r.routine_id == routineId);
         }
     }
 }

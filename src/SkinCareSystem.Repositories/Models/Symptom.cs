@@ -5,15 +5,15 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class Symptom
 {
-    public Guid SymptomId { get; set; }
+    public Guid symptom_id { get; set; }
 
-    public string Name { get; set; } = null!;
+    public string name { get; set; } = null!;
 
-    public string? Description { get; set; }
+    public string? description { get; set; }
 
-    public string? ExampleImageUrl { get; set; }
+    public string? example_image_url { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
     public virtual ICollection<RuleCondition> RuleConditions { get; set; } = new List<RuleCondition>();
 

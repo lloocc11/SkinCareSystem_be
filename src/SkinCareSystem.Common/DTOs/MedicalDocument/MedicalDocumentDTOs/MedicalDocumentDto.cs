@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using SkinCareSystem.Common.DTOs.MedicalDocument.MedicalDocumentAssetDTOs;
 
 namespace SkinCareSystem.Common.DTOs.MedicalDocument
 {
@@ -11,5 +13,6 @@ namespace SkinCareSystem.Common.DTOs.MedicalDocument
         public string Status { get; set; } = null!;
         public DateTime? LastUpdated { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public IReadOnlyList<MedicalDocumentAssetDto> Assets { get; set; } = Array.Empty<MedicalDocumentAssetDto>();
     }
 }

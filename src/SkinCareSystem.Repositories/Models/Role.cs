@@ -5,17 +5,17 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class Role
 {
-    public Guid RoleId { get; set; }
+    public Guid role_id { get; set; }
 
-    public string Name { get; set; } = null!;
+    public string name { get; set; } = null!;
 
-    public string? Description { get; set; }
+    public string? description { get; set; }
 
-    public string Status { get; set; } = null!;
+    public string status { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime? updated_at { get; set; }
 
     public virtual ICollection<User> Users { get; set; } = new List<User>();
 }

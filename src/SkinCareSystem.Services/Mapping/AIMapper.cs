@@ -6,65 +6,65 @@ namespace SkinCareSystem.Services.Mapping
 {
     public static class AIMapper
     {
-        public static AIAnalysisDto ToDto(this Aianalysis entity)
+        public static AIAnalysisDto ToDto(this AIAnalysis entity)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
             return new AIAnalysisDto
             {
-                AnalysisId = entity.AnalysisId,
-                UserId = entity.UserId,
-                ChatMessageId = entity.ChatMessageId,
-                RawInput = entity.RawInput,
-                Result = entity.Result,
-                Confidence = entity.Confidence,
-                CreatedAt = entity.CreatedAt,
-                UpdatedAt = entity.UpdatedAt
+                AnalysisId = entity.analysis_id,
+                UserId = entity.user_id,
+                ChatMessageId = entity.chat_message_id,
+                RawInput = entity.raw_input,
+                Result = entity.result,
+                Confidence = entity.confidence,
+                CreatedAt = entity.created_at,
+                UpdatedAt = entity.updated_at
             };
         }
 
-        public static Aianalysis ToEntity(this AIAnalysisCreateDto dto)
+        public static AIAnalysis ToEntity(this AIAnalysisCreateDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            return new Aianalysis
+            return new AIAnalysis
             {
-                AnalysisId = Guid.NewGuid(),
-                UserId = dto.UserId,
-                ChatMessageId = dto.ChatMessageId,
-                RawInput = dto.RawInput,
-                Result = dto.Result,
-                Confidence = dto.Confidence,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                analysis_id = Guid.NewGuid(),
+                user_id = dto.UserId,
+                chat_message_id = dto.ChatMessageId,
+                raw_input = dto.RawInput,
+                result = dto.Result,
+                confidence = dto.Confidence,
+                created_at = DateTime.Now,
+                updated_at = DateTime.Now
             };
         }
 
-        public static AIResponseDto ToDto(this Airesponse entity)
+        public static AIResponseDto ToDto(this AIResponse entity)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
 
             return new AIResponseDto
             {
-                ResponseId = entity.ResponseId,
-                QueryId = entity.QueryId,
-                ResponseText = entity.ResponseText,
-                ResponseType = entity.ResponseType,
-                CreatedAt = entity.CreatedAt
+                ResponseId = entity.response_id,
+                QueryId = entity.query_id,
+                ResponseText = entity.response_text,
+                ResponseType = entity.response_type,
+                CreatedAt = entity.created_at
             };
         }
 
-        public static Airesponse ToEntity(this AIResponseCreateDto dto)
+        public static AIResponse ToEntity(this AIResponseCreateDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            return new Airesponse
+            return new AIResponse
             {
-                ResponseId = Guid.NewGuid(),
-                QueryId = dto.QueryId,
-                ResponseText = dto.ResponseText,
-                ResponseType = dto.ResponseType,
-                CreatedAt = DateTime.Now
+                response_id = Guid.NewGuid(),
+                query_id = dto.QueryId,
+                response_text = dto.ResponseText,
+                response_type = dto.ResponseType,
+                created_at = DateTime.Now
             };
         }
     }

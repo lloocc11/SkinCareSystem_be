@@ -12,13 +12,13 @@ namespace SkinCareSystem.Services.Mapping
 
             return new ConsentRecordDto
             {
-                ConsentId = consent.ConsentId,
-                UserId = consent.UserId,
-                ConsentType = consent.ConsentType,
-                ConsentText = consent.ConsentText,
-                Given = consent.Given,
-                GivenAt = consent.GivenAt,
-                UserFullName = consent.User?.FullName
+                ConsentId = consent.consent_id,
+                UserId = consent.user_id,
+                ConsentType = consent.consent_type,
+                ConsentText = consent.consent_text,
+                Given = consent.given,
+                GivenAt = consent.given_at,
+                UserFullName = consent.user?.full_name
             };
         }
 
@@ -28,12 +28,12 @@ namespace SkinCareSystem.Services.Mapping
 
             return new ConsentRecord
             {
-                ConsentId = Guid.NewGuid(),
-                UserId = dto.UserId,
-                ConsentType = dto.ConsentType,
-                ConsentText = dto.ConsentText,
-                Given = dto.Given,
-                GivenAt = dto.Given ? DateTime.Now : null
+                consent_id = Guid.NewGuid(),
+                user_id = dto.UserId,
+                consent_type = dto.ConsentType,
+                consent_text = dto.ConsentText,
+                given = dto.Given,
+                given_at = dto.Given ? DateTime.Now : null
             };
         }
 
@@ -44,13 +44,13 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.Given.HasValue)
             {
-                consent.Given = dto.Given.Value;
-                if (dto.Given.Value && !consent.GivenAt.HasValue)
-                    consent.GivenAt = DateTime.Now;
+                consent.given = dto.Given.Value;
+                if (dto.Given.Value && !consent.given_at.HasValue)
+                    consent.given_at = DateTime.Now;
             }
 
             if (dto.GivenAt.HasValue)
-                consent.GivenAt = dto.GivenAt.Value;
+                consent.given_at = dto.GivenAt.Value;
         }
     }
 }

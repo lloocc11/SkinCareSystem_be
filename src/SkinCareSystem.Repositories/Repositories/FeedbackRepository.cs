@@ -20,11 +20,11 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<Feedback>()
                 .AsNoTracking()
-                .Include(f => f.User)
-                .Include(f => f.Routine)
-                .Include(f => f.Step)
-                .Where(f => f.UserId == userId)
-                .OrderByDescending(f => f.CreatedAt)
+                .Include(f => f.user)
+                .Include(f => f.routine)
+                .Include(f => f.step)
+                .Where(f => f.user_id == userId)
+                .OrderByDescending(f => f.created_at)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -34,7 +34,7 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<Feedback>()
                 .AsNoTracking()
-                .Where(f => f.UserId == userId)
+                .Where(f => f.user_id == userId)
                 .CountAsync();
         }
 
@@ -42,11 +42,11 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<Feedback>()
                 .AsNoTracking()
-                .Include(f => f.User)
-                .Include(f => f.Routine)
-                .Include(f => f.Step)
-                .Where(f => f.RoutineId == routineId)
-                .OrderByDescending(f => f.CreatedAt)
+                .Include(f => f.user)
+                .Include(f => f.routine)
+                .Include(f => f.step)
+                .Where(f => f.routine_id == routineId)
+                .OrderByDescending(f => f.created_at)
                 .ToListAsync();
         }
 
@@ -54,11 +54,11 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<Feedback>()
                 .AsNoTracking()
-                .Include(f => f.User)
-                .Include(f => f.Routine)
-                .Include(f => f.Step)
-                .Where(f => f.StepId == stepId)
-                .OrderByDescending(f => f.CreatedAt)
+                .Include(f => f.user)
+                .Include(f => f.routine)
+                .Include(f => f.step)
+                .Where(f => f.step_id == stepId)
+                .OrderByDescending(f => f.created_at)
                 .ToListAsync();
         }
 
@@ -66,10 +66,10 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<Feedback>()
                 .AsNoTracking()
-                .Include(f => f.User)
-                .Include(f => f.Routine)
-                .Include(f => f.Step)
-                .FirstOrDefaultAsync(f => f.FeedbackId == feedbackId);
+                .Include(f => f.user)
+                .Include(f => f.routine)
+                .Include(f => f.step)
+                .FirstOrDefaultAsync(f => f.feedback_id == feedbackId);
         }
     }
 }

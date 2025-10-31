@@ -10,11 +10,11 @@ using SkinCareSystem.Services.InternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers
 {
-    [Route("api/chat/sessions")]
-    [Authorize]
     /// <summary>
     /// Controller for managing chat sessions.
     /// </summary>
+    [Route("api/chat/sessions")]
+    [Authorize]
     public class ChatSessionsController : BaseApiController
     {
         private readonly IChatSessionService _chatSessionService;
@@ -96,6 +96,17 @@ namespace SkinCareSystem.APIService.Controllers
         public async Task<IActionResult> Update(Guid id, [FromBody] ChatSessionUpdateDto dto)
         {
             var result = await _chatSessionService.UpdateSessionAsync(id, dto);
+            return ToHttpResponse(result);
+        }
+        /// <summary>
+        /// DELETE /api/chat/sessions/{id} - Delete chat session
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id)
+        {
+            var result = await _chatSessionService.DeleteSessionAsync(id);
             return ToHttpResponse(result);
         }
     }

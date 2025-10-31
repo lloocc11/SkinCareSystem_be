@@ -12,10 +12,10 @@ namespace SkinCareSystem.Services.Mapping
 
             return new DocumentChunkDto
             {
-                ChunkId = chunk.ChunkId,
-                DocId = chunk.DocId,
-                ChunkText = chunk.ChunkText,
-                CreatedAt = chunk.CreatedAt
+                ChunkId = chunk.chunk_id,
+                DocId = chunk.doc_id,
+                ChunkText = chunk.chunk_text,
+                CreatedAt = chunk.created_at
             };
         }
 
@@ -25,10 +25,10 @@ namespace SkinCareSystem.Services.Mapping
 
             return new DocumentChunk
             {
-                ChunkId = Guid.NewGuid(),
-                DocId = dto.DocId,
-                ChunkText = dto.ChunkText,
-                CreatedAt = DateTime.Now
+                chunk_id = Guid.NewGuid(),
+                doc_id = dto.DocId,
+                chunk_text = dto.ChunkText,
+                created_at = DateTime.Now
             };
         }
 
@@ -38,7 +38,7 @@ namespace SkinCareSystem.Services.Mapping
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
             if (!string.IsNullOrWhiteSpace(dto.ChunkText))
-                chunk.ChunkText = dto.ChunkText;
+                chunk.chunk_text = dto.ChunkText;
         }
     }
 }

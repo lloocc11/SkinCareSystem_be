@@ -19,7 +19,7 @@ namespace SkinCareSystem.Repositories.Repositories
             return await _context.Set<Rule>()
                 .AsNoTracking()
                 .Include(r => r.RuleConditions)
-                .FirstOrDefaultAsync(r => r.RuleId == ruleId);
+                .FirstOrDefaultAsync(r => r.rule_id == ruleId);
         }
     }
 }

@@ -10,11 +10,11 @@ using SkinCareSystem.Services.InternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers
 {
-    [Route("api/users")]
-    [Authorize]
     /// <summary>
     /// Controller for managing user operations.
     /// </summary>
+    [Route("api/users")]
+    [Authorize]
     public class UsersController : BaseApiController
     {
         private readonly IUserService _userService;

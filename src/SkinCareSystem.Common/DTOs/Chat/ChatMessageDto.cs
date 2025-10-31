@@ -6,7 +6,7 @@ namespace SkinCareSystem.Common.DTOs.Chat
     {
         public Guid MessageId { get; set; }
         public Guid SessionId { get; set; }
-        public Guid UserId { get; set; }
+        public Guid? UserId { get; set; }
         public string? Content { get; set; }
         public string? ImageUrl { get; set; }
         public string MessageType { get; set; } = "text";

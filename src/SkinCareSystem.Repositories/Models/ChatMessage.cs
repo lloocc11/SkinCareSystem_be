@@ -5,25 +5,25 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class ChatMessage
 {
-    public Guid MessageId { get; set; }
+    public Guid message_id { get; set; }
 
-    public Guid SessionId { get; set; }
+    public Guid session_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid? user_id { get; set; }
 
-    public string? Content { get; set; }
+    public string? content { get; set; }
 
-    public string? ImageUrl { get; set; }
+    public string? image_url { get; set; }
 
-    public string MessageType { get; set; } = null!;
+    public string message_type { get; set; } = null!;
 
-    public string Role { get; set; } = null!;
+    public string role { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public virtual ICollection<Aianalysis> Aianalyses { get; set; } = new List<Aianalysis>();
+    public virtual ICollection<AIAnalysis> AIAnalyses { get; set; } = new List<AIAnalysis>();
 
-    public virtual ChatSession Session { get; set; } = null!;
+    public virtual ChatSession session { get; set; } = null!;
 
-    public virtual User User { get; set; } = null!;
+    public virtual User? user { get; set; }
 }

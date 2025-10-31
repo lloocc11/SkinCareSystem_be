@@ -20,10 +20,10 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RuleCondition>()
                 .AsNoTracking()
-                .Include(rc => rc.Rule)
-                .Include(rc => rc.Symptom)
-                .Include(rc => rc.Question)
-                .Where(rc => rc.RuleId == ruleId)
+                .Include(rc => rc.rule)
+                .Include(rc => rc.symptom)
+                .Include(rc => rc.question)
+                .Where(rc => rc.rule_id == ruleId)
                 .ToListAsync();
         }
 
@@ -31,10 +31,10 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RuleCondition>()
                 .AsNoTracking()
-                .Include(rc => rc.Rule)
-                .Include(rc => rc.Symptom)
-                .Include(rc => rc.Question)
-                .FirstOrDefaultAsync(rc => rc.RuleConditionId == ruleConditionId);
+                .Include(rc => rc.rule)
+                .Include(rc => rc.symptom)
+                .Include(rc => rc.question)
+                .FirstOrDefaultAsync(rc => rc.rule_condition_id == ruleConditionId);
         }
     }
 }

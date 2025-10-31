@@ -5,17 +5,17 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class UserQuery
 {
-    public Guid QueryId { get; set; }
+    public Guid query_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public string QueryText { get; set; } = null!;
+    public string query_text { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public virtual ICollection<Airesponse> Airesponses { get; set; } = new List<Airesponse>();
+    public virtual ICollection<AIResponse> AIResponses { get; set; } = new List<AIResponse>();
 
     public virtual ICollection<QueryMatch> QueryMatches { get; set; } = new List<QueryMatch>();
 
-    public virtual User User { get; set; } = null!;
+    public virtual User user { get; set; } = null!;
 }

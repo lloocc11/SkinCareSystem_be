@@ -20,10 +20,10 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RoutineProgress>()
                 .AsNoTracking()
-                .Include(rp => rp.Instance)
-                .Include(rp => rp.Step)
-                .Where(rp => rp.InstanceId == instanceId)
-                .OrderByDescending(rp => rp.CompletedAt)
+                .Include(rp => rp.instance)
+                .Include(rp => rp.step)
+                .Where(rp => rp.instance_id == instanceId)
+                .OrderByDescending(rp => rp.completed_at)
                 .ToListAsync();
         }
 
@@ -31,9 +31,9 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RoutineProgress>()
                 .AsNoTracking()
-                .Include(rp => rp.Instance)
-                .Include(rp => rp.Step)
-                .FirstOrDefaultAsync(rp => rp.ProgressId == progressId);
+                .Include(rp => rp.instance)
+                .Include(rp => rp.step)
+                .FirstOrDefaultAsync(rp => rp.progress_id == progressId);
         }
     }
 }

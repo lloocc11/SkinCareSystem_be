@@ -36,7 +36,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             try
             {
                 var query = _unitOfWork.RoutineRepository.GetAllQueryable()
-                    .OrderByDescending(r => r.CreatedAt);
+                    .OrderByDescending(r => r.created_at);
 
                 var totalItems = await query.CountAsync();
                 if (totalItems == 0)
@@ -259,8 +259,8 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            routine.Status = "deleted";
-            routine.UpdatedAt = DateTime.Now;
+            routine.status = "deleted";
+            routine.updated_at = DateTime.Now;
 
             await _unitOfWork.RoutineRepository.UpdateAsync(routine);
             await _unitOfWork.SaveAsync();

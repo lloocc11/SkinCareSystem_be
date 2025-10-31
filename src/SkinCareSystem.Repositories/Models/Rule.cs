@@ -5,13 +5,13 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class Rule
 {
-    public Guid RuleId { get; set; }
+    public Guid rule_id { get; set; }
 
-    public string Recommendation { get; set; } = null!;
+    public string recommendation { get; set; } = null!;
 
-    public string UrgencyLevel { get; set; } = null!;
+    public string urgency_level { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
     public virtual ICollection<RuleCondition> RuleConditions { get; set; } = new List<RuleCondition>();
 }

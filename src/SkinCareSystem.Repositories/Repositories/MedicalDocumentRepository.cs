@@ -21,7 +21,8 @@ namespace SkinCareSystem.Repositories.Repositories
             return await _context.Set<MedicalDocument>()
                 .AsNoTracking()
                 .Include(md => md.DocumentChunks)
-                .FirstOrDefaultAsync(md => md.DocId == docId);
+                .Include(md => md.MedicalDocumentAssets)
+                .FirstOrDefaultAsync(md => md.doc_id == docId);
         }
     }
 
@@ -35,9 +36,9 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<DocumentChunk>()
                 .AsNoTracking()
-                .Include(dc => dc.Doc)
-                .Where(dc => dc.DocId == docId)
-                .OrderBy(dc => dc.CreatedAt)
+                .Include(dc => dc.doc)
+                .Where(dc => dc.doc_id == docId)
+                .OrderBy(dc => dc.created_at)
                 .ToListAsync();
         }
 
@@ -45,8 +46,38 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<DocumentChunk>()
                 .AsNoTracking()
-                .Include(dc => dc.Doc)
-                .FirstOrDefaultAsync(dc => dc.ChunkId == chunkId);
+                .Include(dc => dc.doc)
+                .FirstOrDefaultAsync(dc => dc.chunk_id == chunkId);
+        }
+    }
+
+    public class MedicalDocumentAssetRepository : GenericRepository<MedicalDocumentAsset>, IMedicalDocumentAssetRepository
+    {
+        public MedicalDocumentAssetRepository(SkinCareSystemDbContext context) : base(context)
+        {
+        }
+
+        public async Task<IReadOnlyList<MedicalDocumentAsset>> GetByDocumentIdAsync(Guid docId)
+        {
+            return await _context.Set<MedicalDocumentAsset>()
+                .AsNoTracking()
+                .Include(asset => asset.doc)
+                .Where(asset => asset.doc_id == docId)
+                .OrderByDescending(asset => asset.created_at)
+                .ToListAsync();
+        }
+
+        public async Task<MedicalDocumentAsset?> GetByPublicIdAsync(string publicId)
+        {
+            if (string.IsNullOrWhiteSpace(publicId))
+            {
+                return null;
+            }
+
+            return await _context.Set<MedicalDocumentAsset>()
+                .AsNoTracking()
+                .Include(asset => asset.doc)
+                .FirstOrDefaultAsync(asset => asset.public_id == publicId);
         }
     }
 }

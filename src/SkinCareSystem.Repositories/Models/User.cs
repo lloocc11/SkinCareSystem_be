@@ -5,27 +5,27 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class User
 {
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public string FullName { get; set; } = null!;
+    public string full_name { get; set; } = null!;
 
-    public string Email { get; set; } = null!;
+    public string email { get; set; } = null!;
 
-    public string GoogleId { get; set; } = null!;
+    public string google_id { get; set; } = null!;
 
-    public Guid RoleId { get; set; }
+    public Guid role_id { get; set; }
 
-    public string? SkinType { get; set; }
+    public string? skin_type { get; set; }
 
-    public DateOnly? DateOfBirth { get; set; }
+    public DateOnly? date_of_birth { get; set; }
 
-    public string Status { get; set; } = null!;
+    public string status { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime? updated_at { get; set; }
 
-    public virtual ICollection<Aianalysis> Aianalyses { get; set; } = new List<Aianalysis>();
+    public virtual ICollection<AIAnalysis> AIAnalyses { get; set; } = new List<AIAnalysis>();
 
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
 
@@ -34,8 +34,6 @@ public partial class User
     public virtual ICollection<ConsentRecord> ConsentRecords { get; set; } = new List<ConsentRecord>();
 
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
-
-    public virtual Role Role { get; set; } = null!;
 
     public virtual ICollection<RoutineInstance> RoutineInstances { get; set; } = new List<RoutineInstance>();
 
@@ -46,4 +44,6 @@ public partial class User
     public virtual ICollection<UserQuery> UserQueries { get; set; } = new List<UserQuery>();
 
     public virtual ICollection<UserSymptom> UserSymptoms { get; set; } = new List<UserSymptom>();
+
+    public virtual Role role { get; set; } = null!;
 }

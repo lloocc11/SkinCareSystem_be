@@ -36,7 +36,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             try
             {
                 var query = _unitOfWork.SymptomRepository.GetAllQueryable()
-                    .OrderBy(s => s.Name);
+                    .OrderBy(s => s.name);
 
                 var totalItems = await query.CountAsync();
                 if (totalItems == 0)

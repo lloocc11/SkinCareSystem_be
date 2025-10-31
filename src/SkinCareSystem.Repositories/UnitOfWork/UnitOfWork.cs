@@ -29,6 +29,7 @@ namespace SkinCareSystem.Repositories.UnitOfWork
         private IQuestionRepository? questionRepository;
         private IUserAnswerRepository? userAnswerRepository;
         private IMedicalDocumentRepository? medicalDocumentRepository;
+        private IMedicalDocumentAssetRepository? medicalDocumentAssetRepository;
         private IDocumentChunkRepository? documentChunkRepository;
         private IConsentRecordRepository? consentRecordRepository;
         
@@ -191,6 +192,14 @@ namespace SkinCareSystem.Repositories.UnitOfWork
             get
             {
                 return medicalDocumentRepository ??= new MedicalDocumentRepository(_context);
+            }
+        }
+
+        public IMedicalDocumentAssetRepository MedicalDocumentAssets
+        {
+            get
+            {
+                return medicalDocumentAssetRepository ??= new MedicalDocumentAssetRepository(_context);
             }
         }
 

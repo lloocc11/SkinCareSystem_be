@@ -15,14 +15,14 @@ namespace SkinCareSystem.Services.Mapping
 
             return new FeedbackDto
             {
-                FeedbackId = feedback.FeedbackId,
-                RoutineId = feedback.RoutineId,
-                StepId = feedback.StepId,
-                UserId = feedback.UserId,
-                Rating = feedback.Rating,
-                Comment = feedback.Comment,
-                CreatedAt = feedback.CreatedAt,
-                UserFullName = feedback.User?.FullName
+                FeedbackId = feedback.feedback_id,
+                RoutineId = feedback.routine_id,
+                StepId = feedback.step_id,
+                UserId = feedback.user_id,
+                Rating = feedback.rating,
+                Comment = feedback.comment,
+                CreatedAt = feedback.created_at,
+                UserFullName = feedback.user?.full_name
             };
         }
 
@@ -32,13 +32,13 @@ namespace SkinCareSystem.Services.Mapping
 
             return new Feedback
             {
-                FeedbackId = Guid.NewGuid(),
-                RoutineId = dto.RoutineId,
-                StepId = dto.StepId,
-                UserId = dto.UserId,
-                Rating = dto.Rating,
-                Comment = dto.Comment,
-                CreatedAt = DateTime.Now
+                feedback_id = Guid.NewGuid(),
+                routine_id = dto.RoutineId,
+                step_id = dto.StepId,
+                user_id = dto.UserId,
+                rating = dto.Rating,
+                comment = dto.Comment,
+                created_at = DateTime.Now
             };
         }
 
@@ -49,12 +49,12 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.Rating.HasValue)
             {
-                feedback.Rating = dto.Rating.Value;
+                feedback.rating = dto.Rating.Value;
             }
 
             if (dto.Comment != null)
             {
-                feedback.Comment = dto.Comment;
+                feedback.comment = dto.Comment;
             }
         }
     }

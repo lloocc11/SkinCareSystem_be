@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using CloudinaryDotNet;
 using Swashbuckle.AspNetCore.Annotations;
 using SkinCareSystem.Repositories.DBContext;
 using SkinCareSystem.Repositories.UnitOfWork;
@@ -17,6 +18,7 @@ using SkinCareSystem.Services.ExternalServices.Services;
 using SkinCareSystem.Services.InternalServices.IServices;
 using SkinCareSystem.Services.InternalServices.Services;
 using SkinCareSystem.Services.Options;
+using SkinCareSystem.Services.Rag;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,16 +41,60 @@ builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
 builder.Services.AddScoped<IAIAnalysisService, AIAnalysisService>();
 builder.Services.AddScoped<IAIResponseService, AIResponseService>();
 
+// Routine Services
+builder.Services.AddScoped<IRoutineService, RoutineService>();
+builder.Services.AddScoped<IRoutineStepService, RoutineStepService>();
+builder.Services.AddScoped<IRoutineInstanceService, RoutineInstanceService>();
+builder.Services.AddScoped<IRoutineProgressService, RoutineProgressService>();
+
+// Feedback Service
+builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+
+// Rule Services
+builder.Services.AddScoped<IRuleService, RuleService>();
+builder.Services.AddScoped<IRuleConditionService, RuleConditionService>();
+
+// Symptom Services
+builder.Services.AddScoped<ISymptomService, SymptomService>();
+builder.Services.AddScoped<IUserSymptomService, UserSymptomService>();
+
 // Question Services
 builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
+
 // Medical Document Services
 builder.Services.AddScoped<IMedicalDocumentService, MedicalDocumentService>();
 builder.Services.AddScoped<IDocumentChunkService, DocumentChunkService>();
+builder.Services.AddScoped<IMedicalDocumentAssetService, MedicalDocumentAssetService>();
+
 // Consent Record Service
 builder.Services.AddScoped<IConsentRecordService, ConsentRecordService>();
 
+// External Services
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+
+builder.Services.AddRagServices();
+
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JWT"));
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
+builder.Services.AddSingleton(sp =>
+{
+    var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CloudinarySettings>>().Value;
+    if (string.IsNullOrWhiteSpace(settings.CloudName) ||
+        string.IsNullOrWhiteSpace(settings.ApiKey) ||
+        string.IsNullOrWhiteSpace(settings.ApiSecret))
+    {
+        throw new InvalidOperationException("Cloudinary settings are missing or incomplete.");
+    }
+
+    var account = new Account(settings.CloudName, settings.ApiKey, settings.ApiSecret);
+    var cloudinary = new Cloudinary(account)
+    {
+        Api = { Secure = true }
+    };
+
+    return cloudinary;
+});
 
 var jwtSettings = builder.Configuration.GetSection("JWT").Get<JwtSettings>()
                   ?? throw new InvalidOperationException("JWT settings are missing from configuration.");
@@ -199,7 +245,7 @@ static async Task SeedAdminUserAsync(IServiceProvider serviceProvider)
         
         // Get admin role
         var adminRole = await context.Roles
-            .FirstOrDefaultAsync(r => r.Name.ToLower() == "admin");
+            .FirstOrDefaultAsync(r => r.name.ToLower() == "admin");
             
         if (adminRole == null)
         {
@@ -209,22 +255,22 @@ static async Task SeedAdminUserAsync(IServiceProvider serviceProvider)
         
         // Check if admin user already exists by email
         var existingAdmin = await context.Users
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == adminEmail.ToLower());
+            .FirstOrDefaultAsync(u => u.email.ToLower() == adminEmail.ToLower());
         
         if (existingAdmin != null)
         {
             // Update existing user to admin role
-            if (existingAdmin.RoleId != adminRole.RoleId)
+            if (existingAdmin.role_id != adminRole.role_id)
             {
-                existingAdmin.RoleId = adminRole.RoleId;
-                existingAdmin.Status = "active";
-                existingAdmin.UpdatedAt = DateTime.UtcNow;
+                existingAdmin.role_id = adminRole.role_id;
+                existingAdmin.status = "active";
+                existingAdmin.updated_at = DateTime.UtcNow;
                 await context.SaveChangesAsync();
-                logger.LogInformation("Promoted user {Email} to admin role", existingAdmin.Email);
+                logger.LogInformation("Promoted user {Email} to admin role", existingAdmin.email);
             }
             else
             {
-                logger.LogInformation("User {Email} already has admin role", existingAdmin.Email);
+                logger.LogInformation("User {Email} already has admin role", existingAdmin.email);
             }
         }
         else

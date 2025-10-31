@@ -5,23 +5,23 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class Feedback
 {
-    public Guid FeedbackId { get; set; }
+    public Guid feedback_id { get; set; }
 
-    public Guid RoutineId { get; set; }
+    public Guid routine_id { get; set; }
 
-    public Guid? StepId { get; set; }
+    public Guid? step_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public int Rating { get; set; }
+    public int rating { get; set; }
 
-    public string? Comment { get; set; }
+    public string? comment { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public virtual Routine Routine { get; set; } = null!;
+    public virtual Routine routine { get; set; } = null!;
 
-    public virtual RoutineStep? Step { get; set; }
+    public virtual RoutineStep? step { get; set; }
 
-    public virtual User User { get; set; } = null!;
+    public virtual User user { get; set; } = null!;
 }

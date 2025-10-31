@@ -5,19 +5,17 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class ChatSession
 {
-    public Guid SessionId { get; set; }
+    public Guid session_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public string? Title { get; set; }
+    public string? title { get; set; }
 
-    public string? Status { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime? updated_at { get; set; }
 
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
 
-    public virtual User User { get; set; } = null!;
+    public virtual User user { get; set; } = null!;
 }

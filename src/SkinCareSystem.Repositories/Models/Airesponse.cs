@@ -3,17 +3,17 @@ using System.Collections.Generic;
 
 namespace SkinCareSystem.Repositories.Models;
 
-public partial class Airesponse
+public partial class AIResponse
 {
-    public Guid ResponseId { get; set; }
+    public Guid response_id { get; set; }
 
-    public Guid QueryId { get; set; }
+    public Guid query_id { get; set; }
 
-    public string ResponseText { get; set; } = null!;
+    public string response_text { get; set; } = null!;
 
-    public string ResponseType { get; set; } = null!;
+    public string response_type { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public virtual UserQuery Query { get; set; } = null!;
+    public virtual UserQuery query { get; set; } = null!;
 }

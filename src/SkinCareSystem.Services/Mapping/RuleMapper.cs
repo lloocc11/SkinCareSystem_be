@@ -15,10 +15,10 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RuleDto
             {
-                RuleId = rule.RuleId,
-                Recommendation = rule.Recommendation,
-                UrgencyLevel = rule.UrgencyLevel,
-                CreatedAt = rule.CreatedAt
+                RuleId = rule.rule_id,
+                Recommendation = rule.recommendation,
+                UrgencyLevel = rule.urgency_level,
+                CreatedAt = rule.created_at
             };
         }
 
@@ -28,10 +28,10 @@ namespace SkinCareSystem.Services.Mapping
 
             return new Rule
             {
-                RuleId = Guid.NewGuid(),
-                Recommendation = dto.Recommendation,
-                UrgencyLevel = dto.UrgencyLevel,
-                CreatedAt = DateTime.Now
+                rule_id = Guid.NewGuid(),
+                recommendation = dto.Recommendation,
+                urgency_level = dto.UrgencyLevel,
+                created_at = DateTime.Now
             };
         }
 
@@ -42,12 +42,12 @@ namespace SkinCareSystem.Services.Mapping
 
             if (!string.IsNullOrWhiteSpace(dto.Recommendation))
             {
-                rule.Recommendation = dto.Recommendation;
+                rule.recommendation = dto.Recommendation;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.UrgencyLevel))
             {
-                rule.UrgencyLevel = dto.UrgencyLevel;
+                rule.urgency_level = dto.UrgencyLevel;
             }
         }
     }

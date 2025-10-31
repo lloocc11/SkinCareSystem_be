@@ -20,10 +20,10 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RoutineInstance>()
                 .AsNoTracking()
-                .Include(ri => ri.User)
-                .Include(ri => ri.Routine)
-                .Where(ri => ri.UserId == userId)
-                .OrderByDescending(ri => ri.CreatedAt)
+                .Include(ri => ri.user)
+                .Include(ri => ri.routine)
+                .Where(ri => ri.user_id == userId)
+                .OrderByDescending(ri => ri.created_at)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -33,7 +33,7 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RoutineInstance>()
                 .AsNoTracking()
-                .Where(ri => ri.UserId == userId)
+                .Where(ri => ri.user_id == userId)
                 .CountAsync();
         }
 
@@ -41,10 +41,10 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RoutineInstance>()
                 .AsNoTracking()
-                .Include(ri => ri.User)
-                .Include(ri => ri.Routine)
-                .Where(ri => ri.RoutineId == routineId)
-                .OrderByDescending(ri => ri.StartDate)
+                .Include(ri => ri.user)
+                .Include(ri => ri.routine)
+                .Where(ri => ri.routine_id == routineId)
+                .OrderByDescending(ri => ri.start_date)
                 .ToListAsync();
         }
 
@@ -52,9 +52,9 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.Set<RoutineInstance>()
                 .AsNoTracking()
-                .Include(ri => ri.User)
-                .Include(ri => ri.Routine)
-                .FirstOrDefaultAsync(ri => ri.InstanceId == instanceId);
+                .Include(ri => ri.user)
+                .Include(ri => ri.routine)
+                .FirstOrDefaultAsync(ri => ri.instance_id == instanceId);
         }
     }
 }

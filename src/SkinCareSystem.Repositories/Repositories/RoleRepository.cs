@@ -22,7 +22,7 @@ namespace SkinCareSystem.Repositories.Repositories
             var normalizedName = name.Trim().ToLower();
             return await _context.Set<Role>()
                                  .AsNoTracking()
-                                 .FirstOrDefaultAsync(r => r.Name.ToLower() == normalizedName);
+                                 .FirstOrDefaultAsync(r => r.name.ToLower() == normalizedName);
         }
     }
 }

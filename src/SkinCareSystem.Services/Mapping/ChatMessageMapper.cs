@@ -12,14 +12,14 @@ namespace SkinCareSystem.Services.Mapping
 
             return new ChatMessageDto
             {
-                MessageId = message.MessageId,
-                SessionId = message.SessionId,
-                UserId = message.UserId,
-                Content = message.Content,
-                ImageUrl = message.ImageUrl,
-                MessageType = message.MessageType,
-                Role = message.Role,
-                CreatedAt = message.CreatedAt
+                MessageId = message.message_id,
+                SessionId = message.session_id,
+                UserId = message.user_id,
+                Content = message.content,
+                ImageUrl = message.image_url,
+                MessageType = message.message_type,
+                Role = message.role,
+                CreatedAt = message.created_at
             };
         }
 
@@ -29,14 +29,14 @@ namespace SkinCareSystem.Services.Mapping
 
             return new ChatMessage
             {
-                MessageId = Guid.NewGuid(),
-                SessionId = dto.SessionId,
-                UserId = dto.UserId,
-                Content = dto.Content,
-                ImageUrl = dto.ImageUrl,
-                MessageType = dto.MessageType,
-                Role = dto.Role,
-                CreatedAt = DateTime.Now
+                message_id = Guid.NewGuid(),
+                session_id = dto.SessionId,
+                user_id = dto.UserId,
+                content = dto.Content,
+                image_url = dto.ImageUrl,
+                message_type = dto.MessageType,
+                role = dto.Role,
+                created_at = DateTime.Now
             };
         }
     }

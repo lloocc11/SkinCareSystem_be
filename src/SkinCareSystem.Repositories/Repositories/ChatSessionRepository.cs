@@ -25,15 +25,15 @@ namespace SkinCareSystem.Repositories.Repositories
                 query = query.Include(s => s.ChatMessages);
             }
 
-            return await query.FirstOrDefaultAsync(s => s.SessionId == sessionId);
+            return await query.FirstOrDefaultAsync(s => s.session_id == sessionId);
         }
 
         public async Task<IReadOnlyList<ChatSession>> GetByUserAsync(Guid userId, int pageNumber, int pageSize)
         {
             return await _context.ChatSessions
                 .AsNoTracking()
-                .Where(s => s.UserId == userId)
-                .OrderByDescending(s => s.CreatedAt)
+                .Where(s => s.user_id == userId)
+                .OrderByDescending(s => s.created_at)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -43,7 +43,7 @@ namespace SkinCareSystem.Repositories.Repositories
         {
             return await _context.ChatSessions
                 .AsNoTracking()
-                .CountAsync(s => s.UserId == userId);
+                .CountAsync(s => s.user_id == userId);
         }
     }
 }

@@ -38,7 +38,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             try
             {
                 var query = _unitOfWork.UserRepository.GetAllQueryable()
-                    .OrderBy(u => u.FullName);
+                    .OrderBy(u => u.full_name);
 
                 var totalItems = await query.CountAsync();
                 if (totalItems == 0)
@@ -151,7 +151,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             }
 
             var entity = dto.ToEntity();
-            entity.Role = role;
+            entity.role = role;
 
             await _unitOfWork.UserRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
@@ -180,7 +180,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             {
                 var normalized = dto.Email.Trim().ToLowerInvariant();
                 var existing = await _unitOfWork.UserRepository.GetByEmailAsync(normalized);
-                if (existing != null && existing.UserId != userId)
+                if (existing != null && existing.user_id != userId)
                 {
                     return new ServiceResult
                     {
@@ -204,7 +204,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
                     };
                 }
 
-                user.Role = role;
+                user.role = role;
             }
 
             await _unitOfWork.UserRepository.UpdateAsync(user);
@@ -230,8 +230,8 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            user.Status = "inactive";
-            user.UpdatedAt = DateTime.Now;
+            user.status = "inactive";
+            user.updated_at = DateTime.Now;
 
             await _unitOfWork.UserRepository.UpdateAsync(user);
             await _unitOfWork.SaveAsync();

@@ -16,12 +16,6 @@ namespace SkinCareSystem.Services.InternalServices.Services
 {
     public class ChatSessionService : IChatSessionService
     {
-        private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
-        {
-            "active",
-            "archived"
-        };
-
         private readonly IUnitOfWork _unitOfWork;
 
         public ChatSessionService(IUnitOfWork unitOfWork)
@@ -59,12 +53,11 @@ namespace SkinCareSystem.Services.InternalServices.Services
 
             var dto = new
             {
-                session.SessionId,
-                session.UserId,
-                session.Title,
-                Status = session.Status ?? "active",
-                session.CreatedAt,
-                session.UpdatedAt,
+                session.session_id,
+                session.user_id,
+                session.title,
+                session.created_at,
+                session.updated_at,
                 messages = session.ChatMessages.Select(m => m.ToDto()).ToList()
             };
 
@@ -102,7 +95,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             }
             else
             {
-                var query = _unitOfWork.ChatSessionRepository.GetAllQueryable().OrderByDescending(s => s.CreatedAt);
+                var query = _unitOfWork.ChatSessionRepository.GetAllQueryable().OrderByDescending(s => s.created_at);
                 var totalItems = await query.CountAsync();
                 if (totalItems == 0)
                 {
@@ -135,16 +128,25 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 return new ServiceResult(Const.WARNING_NO_DATA_CODE, "Session not found");
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.Status) && !AllowedStatuses.Contains(dto.Status))
-            {
-                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Invalid session status");
-            }
-
             session.ApplyUpdate(dto);
             await _unitOfWork.ChatSessionRepository.UpdateAsync(session);
             await _unitOfWork.SaveAsync();
 
             return new ServiceResult(Const.SUCCESS_UPDATE_CODE, Const.SUCCESS_UPDATE_MSG, session.ToDto());
+        }
+
+        public async Task<IServiceResult> DeleteSessionAsync(Guid sessionId)
+        {
+            var session = await _unitOfWork.ChatSessionRepository.GetByIdAsync(sessionId);
+            if (session == null)
+            {
+                return new ServiceResult(Const.WARNING_NO_DATA_CODE, "Session not found");
+            }
+
+            await _unitOfWork.ChatSessionRepository.RemoveAsync(session);
+            await _unitOfWork.SaveAsync();
+
+            return new ServiceResult(Const.SUCCESS_DELETE_CODE, Const.SUCCESS_DELETE_MSG);
         }
     }
 }

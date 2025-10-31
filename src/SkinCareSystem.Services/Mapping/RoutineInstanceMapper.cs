@@ -15,14 +15,14 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RoutineInstanceDto
             {
-                InstanceId = instance.InstanceId,
-                RoutineId = instance.RoutineId,
-                UserId = instance.UserId,
-                StartDate = instance.StartDate,
-                EndDate = instance.EndDate,
-                Status = instance.Status,
-                CreatedAt = instance.CreatedAt,
-                UserFullName = instance.User?.FullName
+                InstanceId = instance.instance_id,
+                RoutineId = instance.routine_id,
+                UserId = instance.user_id,
+                StartDate = instance.start_date,
+                EndDate = instance.end_date,
+                Status = instance.status,
+                CreatedAt = instance.created_at,
+                UserFullName = instance.user?.full_name
             };
         }
 
@@ -32,13 +32,13 @@ namespace SkinCareSystem.Services.Mapping
 
             return new RoutineInstance
             {
-                InstanceId = Guid.NewGuid(),
-                RoutineId = dto.RoutineId,
-                UserId = dto.UserId,
-                StartDate = dto.StartDate,
-                EndDate = dto.EndDate,
-                Status = dto.Status ?? "active",
-                CreatedAt = DateTime.Now
+                instance_id = Guid.NewGuid(),
+                routine_id = dto.RoutineId,
+                user_id = dto.UserId,
+                start_date = dto.StartDate,
+                end_date = dto.EndDate,
+                status = dto.Status ?? "active",
+                created_at = DateTime.Now
             };
         }
 
@@ -49,12 +49,12 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.EndDate.HasValue)
             {
-                instance.EndDate = dto.EndDate.Value;
+                instance.end_date = dto.EndDate.Value;
             }
 
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
-                instance.Status = dto.Status;
+                instance.status = dto.Status;
             }
         }
     }

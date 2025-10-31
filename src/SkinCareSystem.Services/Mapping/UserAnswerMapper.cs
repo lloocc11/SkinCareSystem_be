@@ -12,14 +12,14 @@ namespace SkinCareSystem.Services.Mapping
 
             return new UserAnswerDto
             {
-                AnswerId = userAnswer.AnswerId,
-                UserId = userAnswer.UserId,
-                QuestionId = userAnswer.QuestionId,
-                AnswerValue = userAnswer.AnswerValue,
-                CreatedAt = userAnswer.CreatedAt,
-                UpdatedAt = userAnswer.UpdatedAt,
-                UserFullName = userAnswer.User?.FullName,
-                QuestionText = userAnswer.Question?.Text
+                AnswerId = userAnswer.answer_id,
+                UserId = userAnswer.user_id,
+                QuestionId = userAnswer.question_id,
+                AnswerValue = userAnswer.answer_value,
+                CreatedAt = userAnswer.created_at,
+                UpdatedAt = userAnswer.updated_at,
+                UserFullName = userAnswer.user?.full_name,
+                QuestionText = userAnswer.question?.text
             };
         }
 
@@ -29,12 +29,12 @@ namespace SkinCareSystem.Services.Mapping
 
             return new UserAnswer
             {
-                AnswerId = Guid.NewGuid(),
-                UserId = dto.UserId,
-                QuestionId = dto.QuestionId,
-                AnswerValue = dto.AnswerValue,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                answer_id = Guid.NewGuid(),
+                user_id = dto.UserId,
+                question_id = dto.QuestionId,
+                answer_value = dto.AnswerValue,
+                created_at = DateTime.Now,
+                updated_at = DateTime.Now
             };
         }
 
@@ -44,9 +44,9 @@ namespace SkinCareSystem.Services.Mapping
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
             if (!string.IsNullOrWhiteSpace(dto.AnswerValue))
-                userAnswer.AnswerValue = dto.AnswerValue;
+                userAnswer.answer_value = dto.AnswerValue;
             
-            userAnswer.UpdatedAt = DateTime.Now;
+            userAnswer.updated_at = DateTime.Now;
         }
     }
 }

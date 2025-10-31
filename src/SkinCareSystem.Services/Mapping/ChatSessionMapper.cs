@@ -12,12 +12,11 @@ namespace SkinCareSystem.Services.Mapping
 
             return new ChatSessionDto
             {
-                SessionId = session.SessionId,
-                UserId = session.UserId,
-                Title = session.Title,
-                Status = session.Status ?? "active",
-                CreatedAt = session.CreatedAt,
-                UpdatedAt = session.UpdatedAt
+                SessionId = session.session_id,
+                UserId = session.user_id,
+                Title = session.title,
+                CreatedAt = session.created_at,
+                UpdatedAt = session.updated_at
             };
         }
 
@@ -27,12 +26,11 @@ namespace SkinCareSystem.Services.Mapping
 
             return new ChatSession
             {
-                SessionId = Guid.NewGuid(),
-                UserId = dto.UserId,
-                Title = dto.Title,
-                Status = "active",
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                session_id = Guid.NewGuid(),
+                user_id = dto.UserId,
+                title = dto.Title,
+                created_at = DateTime.Now,
+                updated_at = DateTime.Now
             };
         }
 
@@ -43,15 +41,10 @@ namespace SkinCareSystem.Services.Mapping
 
             if (!string.IsNullOrWhiteSpace(dto.Title))
             {
-                session.Title = dto.Title;
+                session.title = dto.Title;
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.Status))
-            {
-                session.Status = dto.Status;
-            }
-
-            session.UpdatedAt = DateTime.Now;
+            session.updated_at = DateTime.Now;
         }
     }
 }

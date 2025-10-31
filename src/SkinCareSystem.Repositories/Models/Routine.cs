@@ -5,35 +5,35 @@ namespace SkinCareSystem.Repositories.Models;
 
 public partial class Routine
 {
-    public Guid RoutineId { get; set; }
+    public Guid routine_id { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid user_id { get; set; }
 
-    public Guid? AnalysisId { get; set; }
+    public Guid? analysis_id { get; set; }
 
-    public string? Description { get; set; }
+    public string? description { get; set; }
 
-    public int? Version { get; set; }
+    public int? version { get; set; }
 
-    public Guid? ParentRoutineId { get; set; }
+    public Guid? parent_routine_id { get; set; }
 
-    public string Status { get; set; } = null!;
+    public string status { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime? created_at { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
-
-    public virtual Aianalysis? Analysis { get; set; }
+    public DateTime? updated_at { get; set; }
 
     public virtual ICollection<Feedback> Feedbacks { get; set; } = new List<Feedback>();
 
-    public virtual ICollection<Routine> InverseParentRoutine { get; set; } = new List<Routine>();
-
-    public virtual Routine? ParentRoutine { get; set; }
+    public virtual ICollection<Routine> Inverseparent_routine { get; set; } = new List<Routine>();
 
     public virtual ICollection<RoutineInstance> RoutineInstances { get; set; } = new List<RoutineInstance>();
 
     public virtual ICollection<RoutineStep> RoutineSteps { get; set; } = new List<RoutineStep>();
 
-    public virtual User User { get; set; } = null!;
+    public virtual AIAnalysis? analysis { get; set; }
+
+    public virtual Routine? parent_routine { get; set; }
+
+    public virtual User user { get; set; } = null!;
 }

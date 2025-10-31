@@ -17,8 +17,8 @@ namespace SkinCareSystem.Repositories.Repositories
             var normalizedEmail = email.Trim().ToLower();
             return await _context.Set<User>()
                                  .AsNoTracking()
-                                 .Include(u => u.Role)
-                                 .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+                                 .Include(u => u.role)
+                                 .FirstOrDefaultAsync(u => u.email.ToLower() == normalizedEmail);
         }
 
         public async Task<User?> GetByGoogleIdAsync(string googleId)
@@ -26,8 +26,8 @@ namespace SkinCareSystem.Repositories.Repositories
             var normalizedGoogleId = googleId.Trim();
             return await _context.Set<User>()
                                  .AsNoTracking()
-                                 .Include(u => u.Role)
-                                 .FirstOrDefaultAsync(u => u.GoogleId == normalizedGoogleId);
+                                 .Include(u => u.role)
+                                 .FirstOrDefaultAsync(u => u.google_id == normalizedGoogleId);
         }
     }
 }
