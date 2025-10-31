@@ -6,5 +6,10 @@ namespace SkinCareSystem.Services.Rag;
 
 public interface IConsultationService
 {
-    Task<ConsultationResult> CreateConsultationAsync(Guid userId, string text, string? imageUrl, CancellationToken ct = default);
+    Task<ConsultationResult> CreateConsultationAsync(
+        Guid userId,
+        string text,
+        string? imageUrl,
+        bool generateRoutine,
+        CancellationToken ct = default);
 }

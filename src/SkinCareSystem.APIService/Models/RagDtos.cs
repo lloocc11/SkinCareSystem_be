@@ -46,4 +46,6 @@ public sealed class ConsultationForm
     public IFormFile? Image { get; set; }
 
     public string? ImageUrl { get; set; }
+
+    public bool GenerateRoutine { get; set; }
 }

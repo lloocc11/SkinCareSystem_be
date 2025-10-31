@@ -19,6 +19,8 @@ public sealed class ConsultationResult
 
     public Guid RoutineId { get; init; }
 
+    public bool RoutineGenerated { get; init; }
+
     public string Json { get; init; } = string.Empty;
 
     public double? Confidence { get; init; }

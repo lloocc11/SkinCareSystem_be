@@ -12,11 +12,11 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace SkinCareSystem.APIService.Controllers
 {
-    [Route("api/chat")]
-    [Authorize]
     /// <summary>
     /// Controller for managing chat messages.
     /// </summary>
+    [Route("api/chat")]
+    [Authorize]
     public class ChatMessagesController : BaseApiController
     {
         private readonly IChatMessageService _chatMessageService;

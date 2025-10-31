@@ -41,16 +41,36 @@ builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
 builder.Services.AddScoped<IAIAnalysisService, AIAnalysisService>();
 builder.Services.AddScoped<IAIResponseService, AIResponseService>();
 
+// Routine Services
+builder.Services.AddScoped<IRoutineService, RoutineService>();
+builder.Services.AddScoped<IRoutineStepService, RoutineStepService>();
+builder.Services.AddScoped<IRoutineInstanceService, RoutineInstanceService>();
+builder.Services.AddScoped<IRoutineProgressService, RoutineProgressService>();
+
+// Feedback Service
+builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+
+// Rule Services
+builder.Services.AddScoped<IRuleService, RuleService>();
+builder.Services.AddScoped<IRuleConditionService, RuleConditionService>();
+
+// Symptom Services
+builder.Services.AddScoped<ISymptomService, SymptomService>();
+builder.Services.AddScoped<IUserSymptomService, UserSymptomService>();
+
 // Question Services
 builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
+
 // Medical Document Services
 builder.Services.AddScoped<IMedicalDocumentService, MedicalDocumentService>();
 builder.Services.AddScoped<IDocumentChunkService, DocumentChunkService>();
 builder.Services.AddScoped<IMedicalDocumentAssetService, MedicalDocumentAssetService>();
+
 // Consent Record Service
 builder.Services.AddScoped<IConsentRecordService, ConsentRecordService>();
 
+// External Services
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 builder.Services.AddRagServices();

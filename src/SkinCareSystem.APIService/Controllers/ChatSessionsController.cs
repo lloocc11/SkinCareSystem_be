@@ -10,11 +10,11 @@ using SkinCareSystem.Services.InternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers
 {
-    [Route("api/chat/sessions")]
-    [Authorize]
     /// <summary>
     /// Controller for managing chat sessions.
     /// </summary>
+    [Route("api/chat/sessions")]
+    [Authorize]
     public class ChatSessionsController : BaseApiController
     {
         private readonly IChatSessionService _chatSessionService;

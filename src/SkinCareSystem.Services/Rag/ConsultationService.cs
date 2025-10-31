@@ -88,7 +88,12 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
         _logger = logger;
     }
 
-    public async Task<ConsultationResult> CreateConsultationAsync(Guid userId, string text, string? imageUrl, CancellationToken ct = default)
+    public async Task<ConsultationResult> CreateConsultationAsync(
+        Guid userId,
+        string text,
+        string? imageUrl,
+        bool generateRoutine,
+        CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);
 
@@ -110,15 +115,13 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
         responseObject["analysis_id"] = analysisId.ToString();
 
         var confidence = ExtractConfidence(responseObject);
-        var routineInfo = responseObject["routine"] as JsonObject
-                          ?? throw new InvalidOperationException("LLM response missing 'routine' object.");
+        var routineInfo = responseObject["routine"] as JsonObject;
+        var routineSteps = routineInfo?["steps"] as JsonArray;
+        var hasValidSteps = routineSteps is { Count: > 0 };
+        var shouldPersistRoutine = generateRoutine && routineInfo is not null && hasValidSteps;
 
-        var routineSteps = routineInfo["steps"] as JsonArray
-                           ?? throw new InvalidOperationException("LLM response missing routine steps.");
-
-        var routineDescription = routineInfo["description"]?.GetValue<string>() ?? "Routine cá nhân hoá";
-
-        var routineId = Guid.NewGuid();
+        var routineDescription = routineInfo?["description"]?.GetValue<string>() ?? "Routine cá nhân hoá";
+        var routineId = shouldPersistRoutine ? Guid.NewGuid() : Guid.Empty;
 
         var resultJson = responseObject.ToJsonString(new JsonSerializerOptions
         {
@@ -163,21 +166,30 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
         };
         _dbContext.AIAnalyses.Add(analysis);
 
-        var routine = new Routine
-        {
-            routine_id = routineId,
-            user_id = userId,
-            analysis_id = analysisId,
-            description = routineDescription,
-            status = "active",
-            version = 1,
-            created_at = DateTime.UtcNow,
-            updated_at = DateTime.UtcNow
-        };
-        _dbContext.Routines.Add(routine);
+        var routineGenerated = false;
 
-        var steps = CreateRoutineSteps(routineSteps, routineId);
-        _dbContext.RoutineSteps.AddRange(steps);
+        if (shouldPersistRoutine)
+        {
+            var routine = new Routine
+            {
+                routine_id = routineId,
+                user_id = userId,
+                analysis_id = analysisId,
+                description = routineDescription,
+                status = "active",
+                version = 1,
+                created_at = DateTime.UtcNow,
+                updated_at = DateTime.UtcNow
+            };
+            _dbContext.Routines.Add(routine);
+
+            var steps = CreateRoutineSteps(routineSteps!, routineId);
+            if (steps.Count > 0)
+            {
+                _dbContext.RoutineSteps.AddRange(steps);
+                routineGenerated = true;
+            }
+        }
 
         await _dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
         await transaction.CommitAsync(ct).ConfigureAwait(false);
@@ -185,7 +197,8 @@ You are a licensed skincare consultant. Produce evidence-based, empathetic advic
         return new ConsultationResult
         {
             AnalysisId = analysisId,
-            RoutineId = routineId,
+            RoutineId = routineGenerated ? routineId : Guid.Empty,
+            RoutineGenerated = routineGenerated,
             Json = resultJson,
             Confidence = confidence,
             ContextItems = ragItems

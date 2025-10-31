@@ -27,6 +27,16 @@ namespace SkinCareSystem.APIService.Controllers;
 [Route("consultations")]
 public sealed class ConsultationsController : BaseApiController
 {
+    private static readonly string[] RoutineKeywords =
+    {
+        "tạo routine",
+        "routine",
+        "lộ trình",
+        "phác đồ",
+        "cho tôi lộ trình",
+        "tạo lộ trình"
+    };
+
     private readonly IConsultationService _consultationService;
     private readonly IWebHostEnvironment _environment;
     private readonly ICloudinaryService? _cloudinaryService;
@@ -46,6 +56,9 @@ public sealed class ConsultationsController : BaseApiController
 
     [HttpPost]
     [Consumes("multipart/form-data")]
+    /// <summary>
+    /// Thực hiện tư vấn (RAG + GPT). Đặt <c>GenerateRoutine</c> hoặc dùng từ khóa "tạo routine", "lộ trình", ... để kèm routine.
+    /// </summary>
     public async Task<IActionResult> CreateAsync(
         [FromForm] ConsultationForm form,
         CancellationToken cancellationToken)
@@ -87,8 +100,9 @@ public sealed class ConsultationsController : BaseApiController
 
         try
         {
+            var generateRoutine = ShouldGenerateRoutine(form);
             var result = await _consultationService
-                .CreateConsultationAsync(userId, form.Text, imageUrl, cancellationToken)
+                .CreateConsultationAsync(userId, form.Text, imageUrl, generateRoutine, cancellationToken)
                 .ConfigureAwait(false);
 
             using var document = JsonDocument.Parse(result.Json);
@@ -98,6 +112,7 @@ public sealed class ConsultationsController : BaseApiController
             {
                 result.AnalysisId,
                 result.RoutineId,
+                result.RoutineGenerated,
                 result.Confidence,
                 advice,
                 context = result.ContextItems.Select(RagItemDto.FromDomain).ToArray()
@@ -111,6 +126,17 @@ public sealed class ConsultationsController : BaseApiController
             var failure = new ServiceResult(Const.ERROR_EXCEPTION, $"Không thể xử lý tư vấn: {ex.Message}");
             return ToHttpResponse(failure);
         }
+    }
+
+    private static bool ShouldGenerateRoutine(ConsultationForm form)
+    {
+        if (form.GenerateRoutine)
+        {
+            return true;
+        }
+
+        var normalized = form.Text?.ToLowerInvariant() ?? string.Empty;
+        return RoutineKeywords.Any(keyword => normalized.Contains(keyword));
     }
 
     private async Task<string> SaveImageAsync(IFormFile file, CancellationToken ct)
