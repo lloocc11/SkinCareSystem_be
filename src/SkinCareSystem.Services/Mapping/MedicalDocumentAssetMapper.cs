@@ -40,7 +40,7 @@ namespace SkinCareSystem.Services.Mapping
                 size_bytes = dto.SizeBytes,
                 width = dto.Width,
                 height = dto.Height,
-                created_at = DateTime.UtcNow
+                created_at = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
             };
         }
 

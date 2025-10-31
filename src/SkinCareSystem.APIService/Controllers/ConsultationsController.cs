@@ -13,6 +13,7 @@ using SkinCareSystem.APIService.Models;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.ExternalServices.IServices;
+using SkinCareSystem.Services.Consultations;
 using SkinCareSystem.Services.Rag;
 
 namespace SkinCareSystem.APIService.Controllers;
@@ -40,16 +41,19 @@ public sealed class ConsultationsController : BaseApiController
     private readonly IConsultationService _consultationService;
     private readonly IWebHostEnvironment _environment;
     private readonly ICloudinaryService? _cloudinaryService;
+    private readonly ISimpleConsultationService _simpleConsultationService;
 
     /// <summary>
     /// Luồng tư vấn cá nhân hóa (text + ảnh) -> RAG -> GPT -> Routine.
     /// </summary>
     public ConsultationsController(
         IConsultationService consultationService,
+        ISimpleConsultationService simpleConsultationService,
         IWebHostEnvironment environment,
         ICloudinaryService? cloudinaryService = null)
     {
         _consultationService = consultationService;
+        _simpleConsultationService = simpleConsultationService;
         _environment = environment;
         _cloudinaryService = cloudinaryService;
     }
@@ -77,26 +81,7 @@ public sealed class ConsultationsController : BaseApiController
             return ToHttpResponse(unauthorized);
         }
 
-        string? imageUrl = form.ImageUrl;
-        if (form.Image is not null && form.Image.Length > 0)
-        {
-            if (_cloudinaryService != null)
-            {
-                try
-                {
-                    var upload = await _cloudinaryService.UploadFileAsync(form.Image, "consultations", cancellationToken).ConfigureAwait(false);
-                    imageUrl = string.IsNullOrWhiteSpace(upload.SecureUrl) ? upload.Url : upload.SecureUrl;
-                }
-                catch
-                {
-                    imageUrl = await SaveImageAsync(form.Image, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            else
-            {
-                imageUrl = await SaveImageAsync(form.Image, cancellationToken).ConfigureAwait(false);
-            }
-        }
+        var imageUrl = await ResolveImageUrlAsync(form, cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -139,6 +124,50 @@ public sealed class ConsultationsController : BaseApiController
         return RoutineKeywords.Any(keyword => normalized.Contains(keyword));
     }
 
+    [HttpPost("simple")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> CreateSimpleAsync(
+        [FromForm] ConsultationForm form,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            var errorMessage = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+            var invalid = new ServiceResult(Const.ERROR_INVALID_DATA_CODE, errorMessage);
+            return ToHttpResponse(invalid);
+        }
+
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdValue, out var userId))
+        {
+            var unauthorized = new ServiceResult(Const.UNAUTHORIZED_ACCESS_CODE, "Không xác định được người dùng.");
+            return ToHttpResponse(unauthorized);
+        }
+
+        try
+        {
+            var imageUrl = await ResolveImageUrlAsync(form, cancellationToken).ConfigureAwait(false);
+            var response = await _simpleConsultationService
+                .GenerateAdviceAsync(userId, form.Text, imageUrl, cancellationToken)
+                .ConfigureAwait(false);
+
+            var payload = new
+            {
+                response.Advice,
+                response.Model,
+                response.GeneratedAt
+            };
+
+            var success = new ServiceResult(Const.SUCCESS_CREATE_CODE, "Tư vấn AI đã sẵn sàng.", payload);
+            return ToHttpResponse(success, Url.ActionLink());
+        }
+        catch (Exception ex)
+        {
+            var failure = new ServiceResult(Const.ERROR_EXCEPTION, $"Không thể xử lý tư vấn: {ex.Message}");
+            return ToHttpResponse(failure);
+        }
+    }
+
     private async Task<string> SaveImageAsync(IFormFile file, CancellationToken ct)
     {
         var uploadsRoot = _environment.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot");
@@ -154,5 +183,31 @@ public sealed class ConsultationsController : BaseApiController
         }
 
         return $"/uploads/{fileName}";
+    }
+
+    private async Task<string?> ResolveImageUrlAsync(ConsultationForm form, CancellationToken cancellationToken)
+    {
+        string? imageUrl = form.ImageUrl;
+        if (form.Image is not null && form.Image.Length > 0)
+        {
+            if (_cloudinaryService != null)
+            {
+                try
+                {
+                    var upload = await _cloudinaryService.UploadFileAsync(form.Image, "consultations", cancellationToken).ConfigureAwait(false);
+                    imageUrl = string.IsNullOrWhiteSpace(upload.SecureUrl) ? upload.Url : upload.SecureUrl;
+                }
+                catch
+                {
+                    imageUrl = await SaveImageAsync(form.Image, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                imageUrl = await SaveImageAsync(form.Image, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        return imageUrl;
     }
 }
