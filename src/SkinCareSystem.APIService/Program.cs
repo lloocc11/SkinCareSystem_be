@@ -39,6 +39,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<IChatSessionService, ChatSessionService>();
 builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
+builder.Services.AddScoped<IAiChatService, AiChatService>();
 builder.Services.AddScoped<IAIAnalysisService, AIAnalysisService>();
 builder.Services.AddScoped<IAIResponseService, AIResponseService>();
 builder.Services.AddScoped<ISimpleConsultationService, SimpleConsultationService>();
@@ -79,6 +80,7 @@ builder.Services.AddRagServices();
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JWT"));
 builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
+builder.Services.Configure<OpenAISettings>(builder.Configuration.GetSection("OpenAI"));
 builder.Services.AddSingleton(sp =>
 {
     var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<CloudinarySettings>>().Value;

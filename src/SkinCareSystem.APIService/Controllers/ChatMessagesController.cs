@@ -4,96 +4,140 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using SkinCareSystem.Common.DTOs.Chat;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.InternalServices.IServices;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace SkinCareSystem.APIService.Controllers
 {
-    /// <summary>
-    /// Controller for managing chat messages.
-    /// </summary>
     [Route("api/chat")]
     [Authorize]
     public class ChatMessagesController : BaseApiController
     {
+        private readonly IAiChatService _aiChatService;
         private readonly IChatMessageService _chatMessageService;
+        private readonly IChatSessionService _chatSessionService;
+        private readonly ILogger<ChatMessagesController> _logger;
 
-        public ChatMessagesController(IChatMessageService chatMessageService)
+        public ChatMessagesController(
+            IAiChatService aiChatService,
+            IChatMessageService chatMessageService,
+            IChatSessionService chatSessionService,
+            ILogger<ChatMessagesController> logger)
         {
+            _aiChatService = aiChatService ?? throw new ArgumentNullException(nameof(aiChatService));
             _chatMessageService = chatMessageService ?? throw new ArgumentNullException(nameof(chatMessageService));
+            _chatSessionService = chatSessionService ?? throw new ArgumentNullException(nameof(chatSessionService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+
         /// <summary>
-        /// POST /api/chat/sessions/{sessionId}/messages - Create a new chat message
+        /// Gửi tin nhắn tới AI trong chat session (có thể kèm ảnh).
         /// </summary>
-        /// <param name="sessionId"></param>
-        /// <param name="dto"></param>
-        /// <returns></returns>
         [HttpPost("sessions/{sessionId:guid}/messages")]
-        public async Task<IActionResult> CreateMessage(Guid sessionId, [FromBody] ChatMessageCreateDto dto)
+        [Consumes("multipart/form-data")]
+        [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
+        [RequestSizeLimit(104857600)]
+        public async Task<IActionResult> SendMessage(Guid sessionId, [FromForm] ChatMessageCreateDto dto)
         {
-            if (!ModelState.IsValid)
+            if (!TryGetRequester(out var requesterId, out var unauthorizedResult))
             {
-                return ToHttpResponse(new ServiceResult
-                {
-                    Status = Const.ERROR_VALIDATION_CODE,
-                    Message = Const.ERROR_INVALID_DATA_MSG
-                });
+                return unauthorizedResult!;
             }
 
+            var isAdmin = User.IsInRole("admin");
+
             dto.SessionId = sessionId;
-            var result = await _chatMessageService.CreateMessageAsync(dto);
-            var location = result.Data is ChatMessageDto messageDto ? $"/api/chat/messages/{messageDto.MessageId}" : null;
-            return ToHttpResponse(result, location);
+            if (!isAdmin && requesterId != dto.UserId)
+            {
+                return ToHttpResponse(new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG));
+            }
+
+            var accessError = await EnsureSessionAccessAsync(sessionId, requesterId, isAdmin).ConfigureAwait(false);
+            if (accessError != null)
+            {
+                return ToHttpResponse(accessError);
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, Const.ERROR_INVALID_DATA_MSG));
+            }
+
+            var result = await _aiChatService.ChatInSessionAsync(dto).ConfigureAwait(false);
+            return ToHttpResponse(result);
         }
+
         /// <summary>
-        /// GET /api/chat/sessions/{sessionId}/messages - Get chat messages by session ID
+        /// Lấy danh sách tin nhắn trong một session.
         /// </summary>
-        /// <param name="sessionId"></param>
-        /// <param name="pageNumber"></param>
-        /// <param name="pageSize"></param>
-        /// <returns></returns>
         [HttpGet("sessions/{sessionId:guid}/messages")]
         public async Task<IActionResult> GetMessages(Guid sessionId, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 50)
         {
-            var result = await _chatMessageService.GetMessagesBySessionAsync(sessionId, pageNumber, pageSize);
+            if (!TryGetRequester(out var requesterId, out var unauthorizedResult))
+            {
+                return unauthorizedResult!;
+            }
+
+            var isAdmin = User.IsInRole("admin");
+            var accessError = await EnsureSessionAccessAsync(sessionId, requesterId, isAdmin).ConfigureAwait(false);
+            if (accessError != null)
+            {
+                return ToHttpResponse(accessError);
+            }
+
+            var result = await _chatMessageService.GetMessagesBySessionAsync(sessionId, pageNumber, pageSize).ConfigureAwait(false);
             return ToHttpResponse(result);
         }
+
         /// <summary>
-        /// GET /api/chat/messages/{messageId} - Get chat message by message ID
+        /// Lấy chi tiết một tin nhắn (sử dụng cho audit/debug).
         /// </summary>
-        /// <param name="messageId"></param>
-        /// <returns></returns>
         [HttpGet("messages/{messageId:guid}")]
         public async Task<IActionResult> GetMessage(Guid messageId)
         {
-            var result = await _chatMessageService.GetMessageAsync(messageId);
+            var result = await _chatMessageService.GetMessageAsync(messageId).ConfigureAwait(false);
             return ToHttpResponse(result);
         }
 
-        /// <summary>
-        /// POST /api/chat/sessions/{sessionId}/messages/upload - Upload image message (Cloudinary fallback local).
-        /// </summary>
-        [HttpPost("sessions/{sessionId:guid}/messages/upload")]
-        [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
-        [RequestSizeLimit(104857600)]
-        public async Task<IActionResult> UploadMessage(Guid sessionId,  IFormFile file,  string role = "user", [FromQuery] string? messageType = null)
+        private bool TryGetRequester(out Guid requesterId, out IActionResult? errorResult)
         {
-            if (file == null || file.Length == 0)
+            requesterId = Guid.Empty;
+            errorResult = null;
+
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdClaim, out requesterId))
             {
-                return ToHttpResponse(new ServiceResult(Const.ERROR_INVALID_DATA_CODE, "Image file is required."));
+                errorResult = ToHttpResponse(new ServiceResult(Const.UNAUTHORIZED_ACCESS_CODE, Const.UNAUTHORIZED_ACCESS_MSG));
+                return false;
             }
 
-            var userClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!Guid.TryParse(userClaim, out var userId))
+            return true;
+        }
+
+        private async Task<ServiceResult?> EnsureSessionAccessAsync(Guid sessionId, Guid requesterId, bool isAdmin)
+        {
+            var sessionResult = await _chatSessionService.GetSessionAsync(sessionId, includeMessages: false).ConfigureAwait(false);
+            if (sessionResult.Status != Const.SUCCESS_READ_CODE)
             {
-                return ToHttpResponse(new ServiceResult(Const.UNAUTHORIZED_ACCESS_CODE, Const.UNAUTHORIZED_ACCESS_MSG));
+                return sessionResult as ServiceResult ?? new ServiceResult(sessionResult.Status, sessionResult.Message ?? string.Empty);
             }
 
-            var result = await _chatMessageService.UploadImageMessageAsync(sessionId, userId, role, file, messageType);
-            return ToHttpResponse(result);
+            if (sessionResult.Data is ChatSessionDto sessionDto)
+            {
+                if (!isAdmin && sessionDto.UserId != requesterId)
+                {
+                    return new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Unexpected payload type when validating session {SessionId}", sessionId);
+            }
+
+            return null;
         }
     }
 }
