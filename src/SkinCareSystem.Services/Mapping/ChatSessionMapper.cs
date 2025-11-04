@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Chat;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -15,8 +16,9 @@ namespace SkinCareSystem.Services.Mapping
                 SessionId = session.session_id,
                 UserId = session.user_id,
                 Title = session.title,
-                CreatedAt = session.created_at,
-                UpdatedAt = session.updated_at
+                Status = "active",
+                CreatedAt = DateTimeHelper.EnsureUtc(session.created_at),
+                UpdatedAt = session.updated_at.HasValue ? DateTimeHelper.EnsureUtc(session.updated_at) : null
             };
         }
 
@@ -24,13 +26,15 @@ namespace SkinCareSystem.Services.Mapping
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
+            var timestamp = DateTimeHelper.UtcNowUnspecified();
+
             return new ChatSession
             {
                 session_id = Guid.NewGuid(),
                 user_id = dto.UserId,
                 title = dto.Title,
-                created_at = DateTime.Now,
-                updated_at = DateTime.Now
+                created_at = timestamp,
+                updated_at = timestamp
             };
         }
 
@@ -44,7 +48,7 @@ namespace SkinCareSystem.Services.Mapping
                 session.title = dto.Title;
             }
 
-            session.updated_at = DateTime.Now;
+            session.updated_at = DateTimeHelper.UtcNowUnspecified();
         }
     }
 }

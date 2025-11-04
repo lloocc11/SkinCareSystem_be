@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using SkinCareSystem.Common.DTOs.Chat;
 using SkinCareSystem.Common.DTOs.Pagination;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.ExternalServices.IServices;
@@ -19,9 +20,6 @@ namespace SkinCareSystem.Services.InternalServices.Services
 {
     public class ChatMessageService : IChatMessageService
     {
-        private static readonly HashSet<string> AllowedMessageTypes = new(StringComparer.OrdinalIgnoreCase) { "text", "image", "mixed" };
-        private static readonly HashSet<string> AllowedRoles = new(StringComparer.OrdinalIgnoreCase) { "user", "assistant" };
-
         private readonly IUnitOfWork _unitOfWork;
         private readonly IHostEnvironment _environment;
         private readonly ICloudinaryService? _cloudinaryService;
@@ -38,16 +36,6 @@ namespace SkinCareSystem.Services.InternalServices.Services
 
         public async Task<IServiceResult> CreateMessageAsync(ChatMessageCreateDto dto)
         {
-            if (!AllowedMessageTypes.Contains(dto.MessageType))
-            {
-                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Unsupported message type");
-            }
-
-            if (!AllowedRoles.Contains(dto.Role))
-            {
-                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Unsupported role");
-            }
-
             var session = await _unitOfWork.ChatSessionRepository.GetByIdAsync(dto.SessionId);
             if (session == null)
             {
@@ -60,7 +48,27 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "User not found");
             }
 
-            var entity = dto.ToEntity();
+            var imageUrl = dto.ImageUrl;
+            if (dto.Image is { Length: > 0 })
+            {
+                imageUrl = await UploadImageAsync(dto.Image).ConfigureAwait(false);
+            }
+
+            var hasText = !string.IsNullOrWhiteSpace(dto.Content);
+            var hasImage = !string.IsNullOrWhiteSpace(imageUrl);
+
+            if (!hasText && !hasImage)
+            {
+                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Either content or image is required.");
+            }
+
+            dto.ImageUrl = imageUrl;
+
+            var messageType = DetermineMessageType(hasText, hasImage);
+            var timestamp = DateTimeHelper.UtcNowUnspecified();
+
+            var entity = dto.ToEntity("user", messageType, timestamp);
+
             await _unitOfWork.ChatMessageRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
 
@@ -87,16 +95,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             }
 
             var roleValue = string.IsNullOrWhiteSpace(role) ? "user" : role.ToLowerInvariant();
-            if (!AllowedRoles.Contains(roleValue))
-            {
-                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Unsupported role");
-            }
-
             var typeValue = string.IsNullOrWhiteSpace(messageType) ? "image" : messageType.ToLowerInvariant();
-            if (!AllowedMessageTypes.Contains(typeValue))
-            {
-                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Unsupported message type");
-            }
 
             string imageUrl;
             if (_cloudinaryService != null)
@@ -120,10 +119,8 @@ namespace SkinCareSystem.Services.InternalServices.Services
             {
                 SessionId = sessionId,
                 UserId = userId,
-                Role = roleValue,
-                MessageType = typeValue,
                 ImageUrl = imageUrl
-            }.ToEntity();
+            }.ToEntity(roleValue, typeValue, DateTimeHelper.UtcNowUnspecified());
 
             await _unitOfWork.ChatMessageRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
@@ -146,6 +143,34 @@ namespace SkinCareSystem.Services.InternalServices.Services
             }
 
             return $"/uploads/chat-images/{fileName}";
+        }
+
+        private static string DetermineMessageType(bool hasText, bool hasImage)
+        {
+            return (hasText, hasImage) switch
+            {
+                (true, true) => "mixed",
+                (false, true) => "image",
+                _ => "text"
+            };
+        }
+
+        private async Task<string> UploadImageAsync(IFormFile file)
+        {
+            if (_cloudinaryService != null)
+            {
+                try
+                {
+                    var upload = await _cloudinaryService.UploadFileAsync(file, "chat-messages").ConfigureAwait(false);
+                    return string.IsNullOrWhiteSpace(upload.SecureUrl) ? upload.Url : upload.SecureUrl;
+                }
+                catch
+                {
+                    // fall back to local storage
+                }
+            }
+
+            return await SaveImageLocallyAsync(file).ConfigureAwait(false);
         }
 
         public async Task<IServiceResult> GetMessageAsync(Guid messageId)
