@@ -37,9 +37,9 @@ namespace SkinCareSystem.APIService.Controllers
         }
 
         /// <summary>
-        /// Lấy danh sách ảnh theo tài liệu.
+        /// GET /api/documents/{documentId}/assets - Lấy danh sách ảnh theo tài liệu.
         /// </summary>
-        [HttpGet("document/{documentId:guid}")]
+        [HttpGet("~/api/documents/{documentId:guid}/assets")]
         public async Task<IActionResult> GetAssetsByDocument(Guid documentId)
         {
             var result = await _assetService.GetAssetsByDocumentAsync(documentId);
@@ -58,10 +58,10 @@ namespace SkinCareSystem.APIService.Controllers
         }
 
         /// <summary>
-        /// Upload ảnh lên Cloudinary và lưu metadata.
+        /// POST /api/documents/{documentId}/assets - Upload ảnh lên Cloudinary và lưu metadata.
         /// </summary>
         [Authorize(Roles = "admin")]
-        [HttpPost("{documentId:guid}/upload")]
+        [HttpPost("~/api/documents/{documentId:guid}/assets")]
         [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
         [RequestSizeLimit(104857600)]
         public async Task<IActionResult> UploadAsset(Guid documentId, IFormFile file, CancellationToken cancellationToken)
