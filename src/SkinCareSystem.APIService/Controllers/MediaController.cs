@@ -26,12 +26,12 @@ namespace SkinCareSystem.APIService.Controllers
         }
 
         /// <summary>
-        /// Upload file lên Cloudinary.
+        /// POST /api/media - Tải tệp lên Cloudinary và trả về metadata.
         /// </summary>
-        [HttpPost("upload")]
+        [HttpPost]
         [RequestFormLimits(MultipartBodyLengthLimit = 104857600)] // 100 MB
         [RequestSizeLimit(104857600)]
-        public async Task<IActionResult> UploadAsync( IFormFile file, string? folder = null, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> UploadAsync(IFormFile file, string? folder = null, CancellationToken cancellationToken = default)
         {
             if (file == null || file.Length == 0)
             {

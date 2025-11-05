@@ -127,10 +127,10 @@ namespace SkinCareSystem.APIService.Controllers
             return ToHttpResponse(result, location);
         }
         /// <summary>
-        /// POST /api/routine-instances/routine/{routineId}/start - Start a new routine instance for the authenticated user
+        /// POST /api/routine-instances/routine/{routineId}/instances - Create a new routine instance for the authenticated user
         /// </summary>
-        [HttpPost("routine/{routineId:guid}/start")]
-        public async Task<IActionResult> StartRoutine(Guid routineId, [FromBody] RoutineInstanceStartRequestDto? dto)
+        [HttpPost("routine/{routineId:guid}/instances")]
+        public async Task<IActionResult> CreateForRoutine(Guid routineId, [FromBody] RoutineInstanceStartRequestDto? dto)
         {
             if (!TryGetRequester(out var requesterId, out var errorResult))
             {

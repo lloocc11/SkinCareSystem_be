@@ -124,7 +124,10 @@ public sealed class ConsultationsController : BaseApiController
         return RoutineKeywords.Any(keyword => normalized.Contains(keyword));
     }
 
-    [HttpPost("simple")]
+    /// <summary>
+    /// POST /simple-consultations - Luồng tư vấn nhẹ (text + ảnh) dùng AI nhanh.
+    /// </summary>
+    [HttpPost("~/simple-consultations")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> CreateSimpleAsync(
         [FromForm] ConsultationForm form,

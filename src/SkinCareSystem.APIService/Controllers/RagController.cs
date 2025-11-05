@@ -26,9 +26,9 @@ public sealed class RagController : BaseApiController
     }
 
     /// <summary>
-    /// Semantic search trên tài liệu y khoa (pgvector + Cloudinary assets).
+    /// POST /rag/queries - Semantic search trên tài liệu y khoa (pgvector + Cloudinary assets).
     /// </summary>
-    [HttpPost("search")]
+    [HttpPost("queries")]
     public async Task<IActionResult> SearchAsync(
         [FromBody] RagSearchRequest request,
         CancellationToken cancellationToken)

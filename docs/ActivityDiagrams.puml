@@ -1,0 +1,84 @@
+@startuml ConsultationActivity
+title Activity Diagram – AI Consultation Flow (Swimlanes)
+
+|User|
+start
+:Submit chat message\n(text and/or image);
+|API (ChatMessagesController)|
+:Authorize & validate session ownership;
+|AI Chat Service|
+if (Has image file?) then (Yes)
+  :Send file to CloudinaryService;
+  |Cloudinary Service|
+  :Upload image & return secure URL;
+  |AI Chat Service|
+  :Attach ImageUrl to DTO;
+else (No)
+  :Use Content/ImageUrl provided;
+endif
+:Persist user ChatMessage via UnitOfWork;
+|RagSearchService|
+:Search DocumentChunks.embedding (pgvector);
+|AI Chat Service|
+:Assemble prompt (text + context + asset URLs);
+|OpenAI LLM|
+:ChatJsonAsync(SystemPrompt,\n userPrompt, JSON schema);
+|AI Chat Service|
+:Parse JSON; ensure disclaimer;
+:Save AIAnalysis (result, confidence);
+if (GenerateRoutine?) then (true)
+  :Create Routine + RoutineSteps\n(status='active');
+endif
+:Persist assistant ChatMessage;
+|User|
+stop
+
+@enduml
+
+@startuml RoutineTrackingActivity
+title Activity Diagram – Routine Tracking Flow (Swimlanes)
+
+|User|
+start
+:Select routine to follow;
+|RoutineInstancesController|
+:POST /api/routine-instances\n(set status='active');
+|RoutineInstanceService|
+:Validate routine & user;\nCheck active instance;
+:Insert RoutineInstance;\nSaveChanges;
+|User|
+:Daily routine step;
+|RoutineProgressController|
+:POST /api/routine-progress;
+|RoutineProgressService|
+:Validate ownership & duplicates;
+:Insert RoutineProgress;\nSaveChanges;
+|User|
+:View progress log\n(GET /api/routine-progress/instance/{id});
+stop
+
+@enduml
+
+@startuml KnowledgeActivity
+title Activity Diagram – Add Medical Document & Assets (Swimlanes)
+
+|Admin User|
+start
+:Prepare metadata;
+|MedicalDocumentsController|
+:POST /api/medicaldocuments;
+|MedicalDocumentService|
+:Insert MedicalDocument;\nSaveChanges;
+|Admin User|
+:Upload supporting assets;
+|MedicalDocumentAssetsController|
+:POST /api/documents/{docId}/assets;
+|Cloudinary Service|
+:Upload -> return URLs;
+|MedicalDocumentAssetService|
+:Persist asset metadata;
+|Background/ETL|
+:Chunk document & compute embeddings\n(DocumentChunks, vector);
+stop
+
+@enduml
