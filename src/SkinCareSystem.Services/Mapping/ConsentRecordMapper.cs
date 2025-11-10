@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Consent;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -33,7 +34,7 @@ namespace SkinCareSystem.Services.Mapping
                 consent_type = dto.ConsentType,
                 consent_text = dto.ConsentText,
                 given = dto.Given,
-                given_at = dto.Given ? DateTime.Now : null
+                given_at = dto.Given ? DateTimeHelper.UtcNowUnspecified() : null
             };
         }
 
@@ -46,11 +47,11 @@ namespace SkinCareSystem.Services.Mapping
             {
                 consent.given = dto.Given.Value;
                 if (dto.Given.Value && !consent.given_at.HasValue)
-                    consent.given_at = DateTime.Now;
+                    consent.given_at = DateTimeHelper.UtcNowUnspecified();
             }
 
             if (dto.GivenAt.HasValue)
-                consent.given_at = dto.GivenAt.Value;
+                consent.given_at = DateTimeHelper.EnsureUnspecified(dto.GivenAt.Value);
         }
     }
 }

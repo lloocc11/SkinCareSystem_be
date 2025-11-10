@@ -11,6 +11,7 @@ namespace SkinCareSystem.Common.DTOs.Routine
         public DateOnly? EndDate { get; set; }
         public string Status { get; set; } = null!;
         public DateTime? CreatedAt { get; set; }
+        public decimal? AdherenceScore { get; set; }
         public string? UserFullName { get; set; }
     }
 }

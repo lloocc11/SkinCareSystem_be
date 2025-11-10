@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Rule;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -31,7 +32,7 @@ namespace SkinCareSystem.Services.Mapping
                 rule_id = Guid.NewGuid(),
                 recommendation = dto.Recommendation,
                 urgency_level = dto.UrgencyLevel,
-                created_at = DateTime.Now
+                created_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 

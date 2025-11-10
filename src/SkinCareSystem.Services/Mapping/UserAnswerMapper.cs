@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Question;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -33,8 +34,8 @@ namespace SkinCareSystem.Services.Mapping
                 user_id = dto.UserId,
                 question_id = dto.QuestionId,
                 answer_value = dto.AnswerValue,
-                created_at = DateTime.Now,
-                updated_at = DateTime.Now
+                created_at = DateTimeHelper.UtcNowUnspecified(),
+                updated_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 
@@ -46,7 +47,7 @@ namespace SkinCareSystem.Services.Mapping
             if (!string.IsNullOrWhiteSpace(dto.AnswerValue))
                 userAnswer.answer_value = dto.AnswerValue;
             
-            userAnswer.updated_at = DateTime.Now;
+            userAnswer.updated_at = DateTimeHelper.UtcNowUnspecified();
         }
     }
 }

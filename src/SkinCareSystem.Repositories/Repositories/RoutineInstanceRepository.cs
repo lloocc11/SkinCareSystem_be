@@ -59,7 +59,7 @@ namespace SkinCareSystem.Repositories.Repositories
 
         public async Task<RoutineInstance?> GetActiveInstanceAsync(Guid userId, Guid routineId)
         {
-            var inactiveStatuses = new[] { "completed", "deleted", "cancelled" };
+            var inactiveStatuses = new[] { "completed", "cancelled" };
 
             return await _context.Set<RoutineInstance>()
                 .AsNoTracking()

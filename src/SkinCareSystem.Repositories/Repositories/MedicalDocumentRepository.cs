@@ -49,6 +49,13 @@ namespace SkinCareSystem.Repositories.Repositories
                 .Include(dc => dc.doc)
                 .FirstOrDefaultAsync(dc => dc.chunk_id == chunkId);
         }
+
+        public async Task<int> DeleteByDocumentIdAsync(Guid docId)
+        {
+            return await _context.Set<DocumentChunk>()
+                .Where(dc => dc.doc_id == docId)
+                .ExecuteDeleteAsync();
+        }
     }
 
     public class MedicalDocumentAssetRepository : GenericRepository<MedicalDocumentAsset>, IMedicalDocumentAssetRepository

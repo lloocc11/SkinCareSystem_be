@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using SkinCareSystem.Common.DTOs.Routine;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
@@ -16,15 +17,19 @@ namespace SkinCareSystem.Services.InternalServices.Services
     public class RoutineProgressService : IRoutineProgressService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IRoutineInstanceService _routineInstanceService;
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         {
             "completed",
-            "skipped"
+            "skipped",
+            "missed",
+            "pending"
         };
 
-        public RoutineProgressService(IUnitOfWork unitOfWork)
+        public RoutineProgressService(IUnitOfWork unitOfWork, IRoutineInstanceService routineInstanceService)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _routineInstanceService = routineInstanceService ?? throw new ArgumentNullException(nameof(routineInstanceService));
         }
 
         public async Task<IServiceResult> GetRoutineProgressByInstanceAsync(Guid instanceId, Guid requesterId, bool isAdmin)
@@ -130,7 +135,16 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 return new ServiceResult
                 {
                     Status = Const.ERROR_VALIDATION_CODE,
-                    Message = $"Invalid status '{dto.Status}'. Allowed values: completed, skipped."
+                    Message = $"Invalid status '{dto.Status}'. Allowed values: completed, skipped, missed, pending."
+                };
+            }
+
+            if (dto.IrritationLevel.HasValue && (dto.IrritationLevel < 1 || dto.IrritationLevel > 5))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "Irritation level must be between 1 and 5."
                 };
             }
 
@@ -168,7 +182,9 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            var completedAt = dto.CompletedAt == default ? DateTime.UtcNow : dto.CompletedAt;
+            var completedAt = dto.CompletedAt == default
+                ? DateTimeHelper.UtcNowUnspecified()
+                : DateTimeHelper.EnsureUnspecified(dto.CompletedAt);
             var duplicate = await _unitOfWork.RoutineProgressRepository.GetByInstanceStepAndDateAsync(dto.InstanceId, dto.StepId, DateOnly.FromDateTime(completedAt));
 
             if (duplicate != null)
@@ -183,6 +199,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             var entity = dto.ToEntity(completedAt, normalizedStatus);
             await _unitOfWork.RoutineProgressRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
+            await _routineInstanceService.RecalculateAdherenceScoreAsync(instance.instance_id);
 
             return new ServiceResult
             {
@@ -222,7 +239,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             DateTime? sanitizedCompletedAt = null;
             if (dto.CompletedAt.HasValue)
             {
-                sanitizedCompletedAt = dto.CompletedAt.Value;
+                sanitizedCompletedAt = DateTimeHelper.EnsureUnspecified(dto.CompletedAt.Value);
                 var existingProgress = await _unitOfWork.RoutineProgressRepository.GetByInstanceStepAndDateAsync(progress.instance_id, progress.step_id, DateOnly.FromDateTime(sanitizedCompletedAt.Value));
                 if (existingProgress != null && existingProgress.progress_id != progress.progress_id)
                 {
@@ -243,9 +260,18 @@ namespace SkinCareSystem.Services.InternalServices.Services
                     return new ServiceResult
                     {
                         Status = Const.ERROR_VALIDATION_CODE,
-                        Message = $"Invalid status '{dto.Status}'. Allowed values: completed, skipped."
+                        Message = $"Invalid status '{dto.Status}'. Allowed values: completed, skipped, missed, pending."
                     };
                 }
+            }
+
+            if (dto.IrritationLevel.HasValue && (dto.IrritationLevel < 1 || dto.IrritationLevel > 5))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "Irritation level must be between 1 and 5."
+                };
             }
 
             var updateDto = new RoutineProgressUpdateDto
@@ -253,13 +279,16 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 CompletedAt = sanitizedCompletedAt,
                 PhotoUrl = dto.PhotoUrl,
                 Note = dto.Note,
-                Status = sanitizedStatus
+                Status = sanitizedStatus,
+                IrritationLevel = dto.IrritationLevel,
+                MoodNote = dto.MoodNote
             };
 
             progress.ApplyUpdate(updateDto);
 
             await _unitOfWork.RoutineProgressRepository.UpdateAsync(progress);
             await _unitOfWork.SaveAsync();
+            await _routineInstanceService.RecalculateAdherenceScoreAsync(progress.instance_id);
 
             return new ServiceResult
             {
@@ -298,6 +327,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
 
             await _unitOfWork.RoutineProgressRepository.RemoveAsync(progress);
             await _unitOfWork.SaveAsync();
+            await _routineInstanceService.RecalculateAdherenceScoreAsync(progress.instance_id);
 
             return new ServiceResult
             {

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SkinCareSystem.Common.DTOs.AuthDTOs;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
@@ -93,7 +94,7 @@ public class GoogleAuthService : IGoogleAuthService
                     user.full_name = fullName;
                 }
 
-                user.updated_at = DateTime.Now;
+                user.updated_at = DateTimeHelper.UtcNowUnspecified();
                 await _unitOfWork.UserRepository.UpdateAsync(user);
                 
                 _logger.LogInformation("Existing user logged in: {UserId}, Email: {Email}", user.user_id, user.email);
@@ -153,8 +154,8 @@ public class GoogleAuthService : IGoogleAuthService
                     google_id = normalizedGoogleId,
                     role_id = userRole.role_id,
                     status = "active",
-                    created_at = DateTime.Now,
-                    updated_at = DateTime.Now
+                    created_at = DateTimeHelper.UtcNowUnspecified(),
+                    updated_at = DateTimeHelper.UtcNowUnspecified()
                 };
 
                 if (shouldBeAdmin)

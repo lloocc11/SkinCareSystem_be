@@ -68,15 +68,29 @@ CREATE TABLE "Users" (
   "user_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   "full_name" varchar NOT NULL,
   "email" varchar UNIQUE NOT NULL,
-  "google_id" varchar UNIQUE NOT NULL,
+
+  -- Có thể login bằng Google hoặc tài khoản local
+  "google_id" varchar UNIQUE,
+  "password_hash" varchar, -- lưu mật khẩu đã hash, KHÔNG lưu plain text
+  "auth_provider" varchar NOT NULL DEFAULT 'google'
+      CHECK ("auth_provider" IN ('google', 'local')),
+
   "role_id" uuid NOT NULL,
   "skin_type" varchar,
   "date_of_birth" date,
   "status" varchar NOT NULL CHECK (status IN ('active', 'inactive', 'banned')),
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY ("role_id") REFERENCES "Roles" ("role_id") ON DELETE RESTRICT
+  FOREIGN KEY ("role_id") REFERENCES "Roles" ("role_id") ON DELETE RESTRICT,
+
+  -- Ràng buộc: nếu dùng Google thì phải có google_id,
+  -- nếu dùng local thì phải có password_hash
+  CHECK (
+      ("auth_provider" = 'google' AND "google_id" IS NOT NULL)
+   OR ("auth_provider" = 'local'  AND "password_hash" IS NOT NULL)
+  )
 );
+
 
 CREATE TABLE "UserAnswers" (
   "answer_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -171,17 +185,35 @@ CREATE TABLE "AIResponses" (
 
 CREATE TABLE "Routines" (
   "routine_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+  -- Người tạo routine (admin/specialist); không phải user áp dụng
   "user_id" uuid NOT NULL,
-  "analysis_id" uuid,
+
+  "analysis_id" uuid, -- nếu routine được AI gợi ý từ 1 phân tích cụ thể
   "description" text,
+
+  -- Thêm thông tin để RAG routine theo loại da / tình trạng
+  "target_skin_type" varchar,           -- ví dụ: oily, dry, sensitive
+  "target_conditions" text,            -- ví dụ: "acne, redness"
+
+  -- Phân biệt routine template vs routine cá nhân hoá (nếu sau này cần)
+  "routine_type" varchar NOT NULL DEFAULT 'template'
+      CHECK ("routine_type" IN ('template', 'personalized')),
+
   "version" int DEFAULT 1 CHECK (version >= 1),
   "parent_routine_id" uuid,
-  "status" varchar NOT NULL CHECK (status IN ('active', 'archived')),
+
+  -- Trạng thái vòng đời routine
+  "status" varchar NOT NULL
+      CHECK ("status" IN ('draft', 'published', 'archived')),
+
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+
   FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE,
   FOREIGN KEY ("parent_routine_id") REFERENCES "Routines" ("routine_id") ON DELETE SET NULL
 );
+
 
 CREATE TABLE "RoutineSteps" (
   "step_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -212,11 +244,19 @@ CREATE TABLE "RoutineInstances" (
   "user_id" uuid NOT NULL,
   "start_date" date NOT NULL,
   "end_date" date,
-  "status" varchar NOT NULL CHECK (status IN ('active', 'paused', 'completed')),
+
+  -- Thêm nhiều trạng thái hơn cho flow thực tế
+  "status" varchar NOT NULL
+      CHECK ("status" IN ('planned', 'active', 'paused', 'completed', 'cancelled')),
+
+  -- Tuỳ chọn: đánh giá tổng quan adherence
+  "adherence_score" numeric(5,2),  -- 0–100 (%), có thể null
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+
   FOREIGN KEY ("routine_id") REFERENCES "Routines" ("routine_id") ON DELETE CASCADE,
   FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE
 );
+
 
 CREATE TABLE "RoutineProgress" (
   "progress_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -225,7 +265,10 @@ CREATE TABLE "RoutineProgress" (
   "completed_at" timestamp NOT NULL,
   "photo_url" varchar,
   "note" text,
-  "status" varchar NOT NULL DEFAULT 'completed' CHECK (status IN ('completed', 'skipped', 'pending')),
+  "status" varchar NOT NULL DEFAULT 'completed'
+      CHECK ("status" IN ('completed', 'skipped', 'missed', 'pending')),
+  "irritation_level" int CHECK ("irritation_level" BETWEEN 1 AND 5), -- da có kích ứng không
+  "mood_note" varchar, -- user cảm nhận chung
   FOREIGN KEY ("instance_id") REFERENCES "RoutineInstances" ("instance_id") ON DELETE CASCADE,
   FOREIGN KEY ("step_id") REFERENCES "RoutineSteps" ("step_id") ON DELETE CASCADE
 );
@@ -289,15 +332,22 @@ CREATE TABLE "ChatSessions" (
 CREATE TABLE "ChatMessages" (
   "message_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   "session_id" uuid NOT NULL,
-  "user_id" uuid NOT NULL,
+
+  -- Cho phép NULL: AI message sẽ có user_id = NULL
+  "user_id" uuid,
+
   "content" text,
   "image_url" varchar,
   "message_type" varchar NOT NULL CHECK (message_type IN ('text', 'image', 'mixed')),
-  "role" varchar NOT NULL CHECK (role IN ('user', 'assistant')),
+
+  -- BỎ cột role, không cần nữa
+  -- "role" varchar NOT NULL CHECK (role IN ('user', 'assistant')),
+
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY ("session_id") REFERENCES "ChatSessions" ("session_id") ON DELETE CASCADE,
   FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE
 );
+
 
 -- ------------------------------------------------------------
 -- Deferred foreign keys
@@ -653,7 +703,6 @@ COMMENT ON COLUMN "ChatMessages"."user_id" IS 'Người gửi (user hoặc bot).
 COMMENT ON COLUMN "ChatMessages"."content" IS 'Nội dung văn bản.';
 COMMENT ON COLUMN "ChatMessages"."image_url" IS 'URL ảnh đính kèm (nếu có).';
 COMMENT ON COLUMN "ChatMessages"."message_type" IS 'Loại tin nhắn (text/image/mixed).';
-COMMENT ON COLUMN "ChatMessages"."role" IS 'Vai trò người gửi.';
 COMMENT ON COLUMN "ChatMessages"."created_at" IS 'Thời điểm gửi tin nhắn.';
 
 -- ------------------------------------------------------------

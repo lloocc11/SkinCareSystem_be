@@ -143,7 +143,7 @@ namespace SkinCareSystem.APIService.Controllers
                 UserId = requesterId,
                 StartDate = dto?.StartDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
                 EndDate = dto?.EndDate,
-                Status = "active"
+                Status = "planned"
             };
 
             var result = await _routineInstanceService.CreateRoutineInstanceAsync(createDto);
@@ -190,6 +190,83 @@ namespace SkinCareSystem.APIService.Controllers
             }
 
             var result = await _routineInstanceService.UpdateRoutineInstanceAsync(id, dto);
+            return ToHttpResponse(result);
+        }
+
+        /// <summary>
+        /// PATCH /api/routine-instances/{id}/status - Update status with allowed transitions.
+        /// </summary>
+        [HttpPatch("{id:guid}/status")]
+        public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] RoutineInstanceStatusUpdateDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.Status))
+            {
+                return ToHttpResponse(new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = Const.ERROR_INVALID_DATA_MSG
+                });
+            }
+
+            var isAdmin = User.IsInRole("admin");
+            if (!isAdmin)
+            {
+                if (!TryGetRequester(out var requesterId, out var errorResult))
+                {
+                    return errorResult!;
+                }
+
+                var existingResult = await _routineInstanceService.GetRoutineInstanceByIdAsync(id);
+                if (existingResult.Status != Const.SUCCESS_READ_CODE)
+                {
+                    return ToHttpResponse(existingResult);
+                }
+
+                if (existingResult.Data is RoutineInstanceDto dtoData && dtoData.UserId != requesterId)
+                {
+                    return ToHttpResponse(new ServiceResult
+                    {
+                        Status = Const.FORBIDDEN_ACCESS_CODE,
+                        Message = Const.FORBIDDEN_ACCESS_MSG
+                    });
+                }
+            }
+
+            var result = await _routineInstanceService.UpdateRoutineInstanceStatusAsync(id, dto.Status);
+            return ToHttpResponse(result);
+        }
+
+        /// <summary>
+        /// POST /api/routine-instances/{id}/recalculate-adherence - recompute adherence score.
+        /// </summary>
+        [HttpPost("{id:guid}/recalculate-adherence")]
+        public async Task<IActionResult> RecalculateAdherence(Guid id)
+        {
+            var isAdmin = User.IsInRole("admin");
+            if (!isAdmin)
+            {
+                if (!TryGetRequester(out var requesterId, out var errorResult))
+                {
+                    return errorResult!;
+                }
+
+                var instanceResult = await _routineInstanceService.GetRoutineInstanceByIdAsync(id);
+                if (instanceResult.Status != Const.SUCCESS_READ_CODE)
+                {
+                    return ToHttpResponse(instanceResult);
+                }
+
+                if (instanceResult.Data is RoutineInstanceDto dto && dto.UserId != requesterId)
+                {
+                    return ToHttpResponse(new ServiceResult
+                    {
+                        Status = Const.FORBIDDEN_ACCESS_CODE,
+                        Message = Const.FORBIDDEN_ACCESS_MSG
+                    });
+                }
+            }
+
+            var result = await _routineInstanceService.RecalculateAdherenceScoreAsync(id);
             return ToHttpResponse(result);
         }
         /// <summary>

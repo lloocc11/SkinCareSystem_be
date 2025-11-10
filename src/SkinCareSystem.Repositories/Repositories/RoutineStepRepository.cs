@@ -33,5 +33,12 @@ namespace SkinCareSystem.Repositories.Repositories
                 .Include(rs => rs.routine)
                 .FirstOrDefaultAsync(rs => rs.step_id == stepId);
         }
+
+        public async Task<int> DeleteByRoutineIdAsync(Guid routineId)
+        {
+            return await _context.Set<RoutineStep>()
+                .Where(rs => rs.routine_id == routineId)
+                .ExecuteDeleteAsync();
+        }
     }
 }

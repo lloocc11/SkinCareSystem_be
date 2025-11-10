@@ -20,6 +20,7 @@ using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.ExternalServices.IServices;
 using SkinCareSystem.Services.InternalServices.IServices;
+using SkinCareSystem.Services.InternalServices.Models;
 using SkinCareSystem.Services.Mapping;
 using SkinCareSystem.Services.Options;
 using SkinCareSystem.Services.Rag;
@@ -35,13 +36,15 @@ namespace SkinCareSystem.Services.InternalServices.Services
         private static readonly string[] DefaultSourceFilter = { "guideline:vn-2024", "faq" };
 
         private const string SystemPrompt = """
-Bạn là chuyên gia da liễu nói tiếng Việt. Phải đưa ra lời khuyên ngắn gọn, dựa trên bằng chứng từ phần "Tri thức liên quan". Luôn giữ giọng điệu đồng cảm, rõ ràng cho người dùng phổ thông.
+Bạn là chuyên gia da liễu nói tiếng Việt. Luôn dựa trên tri thức RAG và danh sách routine template được cung cấp ở cuối bản nhắc.
 
-Yêu cầu xuất ra JSON hợp lệ với các trường:
-- summary (chuỗi tóm tắt tình trạng)
-- recommendations (mảng, mỗi phần tử có type, title, details). BẮT BUỘC phải có phần tử type = "disclaimer".
-- routine (tùy chọn) gồm description và steps[]. Mỗi step có order, instruction, time_of_day (morning/evening/both), frequency (daily/twice_daily/weekly/as_needed).
-- confidence (0..1)
+Nhiệm vụ:
+1. Tóm tắt tình trạng da trong 2-3 câu dễ hiểu.
+2. Tạo mảng recommendations (type/title/details). Bắt buộc có ít nhất 1 recommendation với type="disclaimer".
+3. Đánh giá danh sách routine template đã cho, chọn tối đa 3 routine phù hợp nhất (sử dụng đúng giá trị id). Với mỗi routine được chọn, mô tả ngắn gọn (shortDescription) và giải thích vì sao phù hợp (whyMatched) dựa trên loại da, vấn đề chính hoặc mô tả của người dùng.
+4. Trả về confidence từ 0..1 phản ánh độ chắc chắn của phân tích.
+
+Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
 """;
 
         private const string JsonSchema = """
@@ -62,28 +65,24 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
       },
       "minItems": 1
     },
-    "routine": {
-      "type": "object",
-      "properties": {
-        "description": { "type": "string" },
-        "steps": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "order": { "type": "integer", "minimum": 1 },
-              "instruction": { "type": "string" },
-              "time_of_day": { "type": "string", "enum": ["morning", "evening", "both"] },
-              "frequency": { "type": "string", "enum": ["daily", "twice_daily", "weekly", "as_needed"] }
-            },
-            "required": ["instruction"]
-          }
-        }
-      }
+    "routines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "shortDescription": { "type": "string" },
+          "whyMatched": { "type": "string" }
+        },
+        "required": ["id", "whyMatched"]
+      },
+      "minItems": 0,
+      "maxItems": 3
     },
     "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
   },
-  "required": ["summary", "recommendations", "confidence"]
+  "required": ["summary", "recommendations", "routines", "confidence"]
 }
 """;
 
@@ -91,6 +90,7 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
         private readonly IRagSearchService _ragSearchService;
         private readonly ILlmClient _llmClient;
         private readonly ICloudinaryService? _cloudinaryService;
+        private readonly IRoutineRecommendationService _routineRecommendationService;
         private readonly ILogger<AiChatService> _logger;
         private readonly OpenAISettings _openAiSettings;
 
@@ -98,6 +98,7 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
             IUnitOfWork unitOfWork,
             IRagSearchService ragSearchService,
             ILlmClient llmClient,
+            IRoutineRecommendationService routineRecommendationService,
             ILogger<AiChatService> logger,
             IOptions<OpenAISettings> openAiSettings,
             ICloudinaryService? cloudinaryService = null)
@@ -105,6 +106,7 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
             _ragSearchService = ragSearchService ?? throw new ArgumentNullException(nameof(ragSearchService));
             _llmClient = llmClient ?? throw new ArgumentNullException(nameof(llmClient));
+            _routineRecommendationService = routineRecommendationService ?? throw new ArgumentNullException(nameof(routineRecommendationService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _openAiSettings = openAiSettings?.Value ?? new OpenAISettings();
             _cloudinaryService = cloudinaryService;
@@ -133,12 +135,17 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
                 return new ServiceResult(Const.WARNING_NO_DATA_CODE, "Chat session not found.");
             }
 
-            if (session.user_id != dto.UserId)
+            if (!dto.UserId.HasValue)
+            {
+                return new ServiceResult(Const.ERROR_INVALID_DATA_CODE, "UserId is required.");
+            }
+
+            if (session.user_id != dto.UserId.Value)
             {
                 return new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG);
             }
 
-            var user = await _unitOfWork.UserRepository.GetByIdAsync(dto.UserId).ConfigureAwait(false);
+            var user = await _unitOfWork.UserRepository.GetByIdAsync(dto.UserId.Value).ConfigureAwait(false);
             if (user == null)
             {
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "User not found.");
@@ -163,7 +170,7 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
 
             try
             {
-                var userMessageEntity = dto.ToEntity("user", messageType, timestamp);
+                var userMessageEntity = dto.ToEntity(messageType, timestamp);
                 await _unitOfWork.ChatMessageRepository.CreateAsync(userMessageEntity).ConfigureAwait(false);
 
                 var contextItems = await _ragSearchService.SearchAsync(
@@ -173,8 +180,21 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
                         ct: cancellationToken)
                     .ConfigureAwait(false);
 
+                var routineCandidates = await _routineRecommendationService
+                    .RecommendAsync(
+                        hasText ? normalizedContent : "Phân tích ảnh người dùng cung cấp",
+                        user.skin_type,
+                        topK: 5,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
                 var contextText = BuildContext(contextItems);
-                var prompt = BuildUserPrompt(normalizedContent, uploadedImageUrl, contextText, contextItems);
+                var prompt = BuildUserPrompt(
+                    normalizedContent,
+                    uploadedImageUrl,
+                    contextText,
+                    contextItems,
+                    routineCandidates);
 
                 string llmResponseJson;
                 try
@@ -195,14 +215,20 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
 
                 var responseObject = ParseResponse(llmResponseJson);
                 EnsureDisclaimer(responseObject);
+                var routineSuggestions = MapRoutineSuggestions(responseObject, routineCandidates);
+                if (routineSuggestions.Count == 0 && routineCandidates.Count > 0)
+                {
+                    routineSuggestions = CreateFallbackSuggestions(routineCandidates);
+                    InjectRoutineSuggestions(responseObject, routineSuggestions);
+                }
 
-                var assistantContent = BuildAssistantMessage(responseObject);
+                var assistantContent = BuildAssistantMessage(responseObject, routineSuggestions);
                 var confidence = ExtractConfidence(responseObject);
 
                 var analysis = new AIAnalysis
                 {
                     analysis_id = Guid.NewGuid(),
-                    user_id = dto.UserId,
+                    user_id = dto.UserId.Value,
                     chat_message_id = userMessageEntity.message_id,
                     raw_input = normalizedContent,
                     result = responseObject.ToJsonString(new JsonSerializerOptions
@@ -214,18 +240,6 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
                     updated_at = timestamp
                 };
                 await _unitOfWork.AIAnalysisRepository.CreateAsync(analysis).ConfigureAwait(false);
-
-                Guid? routineId = null;
-                var routineGenerated = false;
-                if (dto.GenerateRoutine && TryExtractRoutine(responseObject, out var routineInfo, out var stepsArray))
-                {
-                    var routineResult = await PersistRoutineAsync(dto.UserId, analysis.analysis_id, routineInfo, stepsArray, cancellationToken).ConfigureAwait(false);
-                    if (routineResult != Guid.Empty)
-                    {
-                        routineId = routineResult;
-                        routineGenerated = true;
-                    }
-                }
 
                 var assistantMessageEntity = ChatMessageMapper.CreateAssistantMessage(
                     dto.SessionId,
@@ -242,9 +256,10 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
                     UserMessage = userMessageEntity.ToDto(),
                     AssistantMessage = assistantMessageEntity.ToDto(),
                     AnalysisId = analysis.analysis_id,
-                    RoutineId = routineId,
-                    RoutineGenerated = routineGenerated,
-                    Confidence = confidence
+                    RoutineId = null,
+                    RoutineGenerated = false,
+                    Confidence = confidence,
+                    SuggestedRoutines = routineSuggestions
                 };
                 return new ServiceResult(Const.SUCCESS_READ_CODE, Const.SUCCESS_READ_MSG, responseDto);
             }
@@ -254,82 +269,6 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
                 _logger.LogError(ex, "Failed to process AI chat turn for session {SessionId}", dto.SessionId);
                 return new ServiceResult(Const.ERROR_EXCEPTION, $"Không thể xử lý yêu cầu chat: {ex.Message}");
             }
-        }
-
-        private async Task<Guid> PersistRoutineAsync(Guid userId, Guid analysisId, JsonObject routineInfo, JsonArray stepsArray, CancellationToken ct)
-        {
-            if (!stepsArray.Any())
-            {
-                return Guid.Empty;
-            }
-
-            var routineId = Guid.NewGuid();
-            var steps = CreateRoutineSteps(stepsArray, routineId);
-            if (steps.Count == 0)
-            {
-                return Guid.Empty;
-            }
-
-            var timestamp = DateTimeHelper.UtcNowUnspecified();
-            var routine = new Routine
-            {
-                routine_id = routineId,
-                user_id = userId,
-                analysis_id = analysisId,
-                description = routineInfo["description"]?.GetValue<string>() ?? "Routine cá nhân hoá",
-                status = "active",
-                version = 1,
-                created_at = timestamp,
-                updated_at = timestamp
-            };
-            await _unitOfWork.RoutineRepository.CreateAsync(routine).ConfigureAwait(false);
-
-            foreach (var step in steps)
-            {
-                await _unitOfWork.RoutineStepRepository.CreateAsync(step).ConfigureAwait(false);
-            }
-
-            return routineId;
-        }
-
-        private static List<RoutineStep> CreateRoutineSteps(JsonArray stepsArray, Guid routineId)
-        {
-            var steps = new List<RoutineStep>();
-            var orderFallback = 1;
-            foreach (var node in stepsArray.OfType<JsonObject>())
-            {
-                var instruction = node["instruction"]?.GetValue<string>();
-                if (string.IsNullOrWhiteSpace(instruction))
-                {
-                    continue;
-                }
-
-                int resolvedOrder = orderFallback++;
-                if (node.TryGetPropertyValue("order", out var orderNode) &&
-                    orderNode is JsonValue orderValue &&
-                    orderValue.TryGetValue<int>(out var parsedOrder) &&
-                    parsedOrder > 0)
-                {
-                    resolvedOrder = parsedOrder;
-                }
-
-                var step = new RoutineStep
-                {
-                    step_id = Guid.NewGuid(),
-                    routine_id = routineId,
-                    step_order = resolvedOrder,
-                    instruction = instruction.Trim(),
-                    time_of_day = SanitizeTimeOfDay(node["time_of_day"]?.GetValue<string>()),
-                    frequency = SanitizeFrequency(node["frequency"]?.GetValue<string>())
-                };
-
-                steps.Add(step);
-            }
-
-            return steps
-                .OrderBy(s => s.step_order)
-                .ThenBy(s => s.step_id)
-                .ToList();
         }
 
         private static string DetermineMessageType(bool hasText, bool hasImage)
@@ -421,7 +360,12 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
             return builder.ToString();
         }
 
-        private static string BuildUserPrompt(string content, string? imageUrl, string context, IReadOnlyList<RagItem> items)
+        private static string BuildUserPrompt(
+            string content,
+            string? imageUrl,
+            string context,
+            IReadOnlyList<RagItem> items,
+            IReadOnlyList<RoutineRecommendation> routineCandidates)
         {
             var builder = new StringBuilder();
             builder.AppendLine("Thông tin người dùng:");
@@ -458,9 +402,124 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
             builder.AppendLine();
             builder.AppendLine("Tri thức liên quan:");
             builder.AppendLine(context);
+            builder.AppendLine();
+            builder.AppendLine(BuildRoutineCandidateSection(routineCandidates));
             builder.AppendLine("Hãy phản hồi bằng JSON hợp lệ theo schema yêu cầu.");
 
             return builder.ToString();
+        }
+
+        private static string BuildRoutineCandidateSection(IReadOnlyList<RoutineRecommendation> candidates)
+        {
+            if (candidates.Count == 0)
+            {
+                return "Hiện chưa có routine template nào phù hợp trong hệ thống.";
+            }
+
+            var builder = new StringBuilder();
+            builder.AppendLine("Danh sách routine template đã xuất bản (chỉ chọn tối đa 3 và giữ nguyên giá trị id):");
+            foreach (var candidate in candidates)
+            {
+                builder.AppendLine($"- id: {candidate.RoutineId}");
+                builder.AppendLine($"  title: {candidate.Title}");
+                builder.AppendLine($"  short_description: {candidate.ShortDescription}");
+                builder.AppendLine($"  target_skin_type: {candidate.TargetSkinType ?? "phù hợp mọi loại da"}");
+                builder.AppendLine($"  target_conditions: {candidate.TargetConditions ?? "đa mục tiêu"}");
+                if (candidate.Steps.Count > 0)
+                {
+                    builder.AppendLine("  key_steps:");
+                    foreach (var step in candidate.Steps.Take(4))
+                    {
+                        builder.AppendLine($"    • {step.time_of_day}: {step.instruction?.Trim()} ({step.frequency})");
+                    }
+                }
+                builder.AppendLine();
+            }
+
+            return builder.ToString();
+        }
+
+        private static IReadOnlyList<RoutineSuggestionDto> MapRoutineSuggestions(
+            JsonObject response,
+            IReadOnlyList<RoutineRecommendation> candidates)
+        {
+            if (candidates.Count == 0 ||
+                !response.TryGetPropertyValue("routines", out var routinesNode) ||
+                routinesNode is not JsonArray routineArray ||
+                routineArray.Count == 0)
+            {
+                return Array.Empty<RoutineSuggestionDto>();
+            }
+
+            var lookup = candidates.ToDictionary(r => r.RoutineId, r => r);
+            var result = new List<RoutineSuggestionDto>();
+
+            foreach (var item in routineArray.OfType<JsonObject>())
+            {
+                var idValue = item["id"]?.GetValue<string>();
+                if (!Guid.TryParse(idValue, out var routineId))
+                {
+                    continue;
+                }
+
+                if (!lookup.TryGetValue(routineId, out var candidate))
+                {
+                    continue;
+                }
+
+                var title = item["title"]?.GetValue<string>();
+                var shortDescription = item["shortDescription"]?.GetValue<string>();
+                var whyMatched = item["whyMatched"]?.GetValue<string>();
+
+                result.Add(new RoutineSuggestionDto
+                {
+                    RoutineId = routineId,
+                    Title = string.IsNullOrWhiteSpace(title) ? candidate.Title : title!.Trim(),
+                    ShortDescription = string.IsNullOrWhiteSpace(shortDescription)
+                        ? candidate.ShortDescription
+                        : shortDescription!.Trim(),
+                    TargetSkinType = candidate.TargetSkinType,
+                    TargetConditions = candidate.TargetConditions,
+                    WhyMatched = string.IsNullOrWhiteSpace(whyMatched) ? candidate.InitialReason : whyMatched!.Trim(),
+                    SimilarityScore = Math.Round(candidate.SimilarityScore, 4)
+                });
+            }
+
+            return result;
+        }
+
+        private static List<RoutineSuggestionDto> CreateFallbackSuggestions(IReadOnlyList<RoutineRecommendation> candidates)
+        {
+            return candidates
+                .Take(3)
+                .Select(candidate => new RoutineSuggestionDto
+                {
+                    RoutineId = candidate.RoutineId,
+                    Title = candidate.Title,
+                    ShortDescription = candidate.ShortDescription,
+                    TargetSkinType = candidate.TargetSkinType,
+                    TargetConditions = candidate.TargetConditions,
+                    WhyMatched = candidate.InitialReason,
+                    SimilarityScore = Math.Round(candidate.SimilarityScore, 4)
+                })
+                .ToList();
+        }
+
+        private static void InjectRoutineSuggestions(JsonObject response, IReadOnlyList<RoutineSuggestionDto> suggestions)
+        {
+            var array = new JsonArray();
+            foreach (var suggestion in suggestions)
+            {
+                array.Add(new JsonObject
+                {
+                    ["id"] = suggestion.RoutineId.ToString(),
+                    ["title"] = suggestion.Title,
+                    ["shortDescription"] = suggestion.ShortDescription,
+                    ["whyMatched"] = suggestion.WhyMatched ?? "Được đề xuất dựa trên ngữ cảnh."
+                });
+            }
+
+            response["routines"] = array;
         }
 
         private static JsonObject ParseResponse(string json)
@@ -497,7 +556,7 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
             }
         }
 
-        private static string BuildAssistantMessage(JsonObject response)
+        private static string BuildAssistantMessage(JsonObject response, IReadOnlyList<RoutineSuggestionDto> suggestions)
         {
             var builder = new StringBuilder();
 
@@ -547,28 +606,20 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
                 }
             }
 
+            if (suggestions.Count > 0)
+            {
+                builder.AppendLine();
+                builder.AppendLine("Routine template gợi ý:");
+                foreach (var suggestion in suggestions)
+                {
+                    var reason = string.IsNullOrWhiteSpace(suggestion.WhyMatched)
+                        ? "Phù hợp với nhu cầu đã mô tả."
+                        : suggestion.WhyMatched.Trim();
+                    builder.AppendLine($"- {suggestion.Title}: {reason}");
+                }
+            }
+
             return builder.ToString().Trim();
-        }
-
-        private static bool TryExtractRoutine(JsonObject response, out JsonObject routineInfo, out JsonArray steps)
-        {
-            routineInfo = new JsonObject();
-            steps = new JsonArray();
-
-            if (!response.TryGetPropertyValue("routine", out var routineNode) || routineNode is not JsonObject routine)
-            {
-                return false;
-            }
-
-            routineInfo = routine;
-
-            if (routine.TryGetPropertyValue("steps", out var stepsNode) && stepsNode is JsonArray array && array.Count > 0)
-            {
-                steps = array;
-                return true;
-            }
-
-            return false;
         }
 
         private static double? ExtractConfidence(JsonObject response)
@@ -591,29 +642,6 @@ Yêu cầu xuất ra JSON hợp lệ với các trường:
             }
 
             return null;
-        }
-
-        private static string SanitizeTimeOfDay(string? value)
-        {
-            return value?.Trim().ToLowerInvariant() switch
-            {
-                "morning" => "morning",
-                "evening" => "evening",
-                "both" => "both",
-                _ => "both"
-            };
-        }
-
-        private static string SanitizeFrequency(string? value)
-        {
-            return value?.Trim().ToLowerInvariant() switch
-            {
-                "daily" => "daily",
-                "twice_daily" => "twice_daily",
-                "weekly" => "weekly",
-                "as_needed" => "as_needed",
-                _ => "daily"
-            };
         }
 
         private static DateTime ToDatabaseTimestamp(DateTime value) => DateTimeHelper.EnsureUnspecified(value);

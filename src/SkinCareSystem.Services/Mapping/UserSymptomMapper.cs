@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Symptom;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -33,7 +34,7 @@ namespace SkinCareSystem.Services.Mapping
                 user_symptom_id = Guid.NewGuid(),
                 user_id = dto.UserId,
                 symptom_id = dto.SymptomId,
-                reported_at = DateTime.Now
+                reported_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 
@@ -44,7 +45,7 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.ReportedAt.HasValue)
             {
-                userSymptom.reported_at = dto.ReportedAt.Value;
+                userSymptom.reported_at = DateTimeHelper.EnsureUnspecified(dto.ReportedAt.Value);
             }
         }
     }

@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Question;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -30,7 +31,7 @@ namespace SkinCareSystem.Services.Mapping
                 text = dto.Text,
                 type = dto.Type,
                 options = dto.Options,
-                created_at = DateTime.Now
+                created_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 

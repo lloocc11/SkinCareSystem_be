@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using SkinCareSystem.Common.DTOs.Pagination;
 using SkinCareSystem.Common.DTOs.Routine;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Repositories.Models;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.InternalServices.IServices;
@@ -18,11 +19,11 @@ namespace SkinCareSystem.Services.InternalServices.Services
         private readonly IUnitOfWork _unitOfWork;
         private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
         {
+            "planned",
             "active",
             "paused",
             "completed",
-            "cancelled",
-            "deleted"
+            "cancelled"
         };
 
         public RoutineInstanceService(IUnitOfWork unitOfWork)
@@ -161,8 +162,17 @@ namespace SkinCareSystem.Services.InternalServices.Services
                     Message = "Routine not found"
                 };
             }
+            if (!string.Equals(routine.routine_type, "template", StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(routine.status, "published", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "Routine must be a published template to create an instance"
+                };
+            }
 
-            var normalizedStatus = NormalizeStatus(dto.Status ?? "active");
+            var normalizedStatus = NormalizeStatus(dto.Status ?? "planned");
 
             if (!AllowedStatuses.Contains(normalizedStatus))
             {
@@ -200,6 +210,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             dto.Status = normalizedStatus;
 
             var entity = dto.ToEntity();
+            entity.adherence_score = null;
             await _unitOfWork.RoutineInstanceRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
 
@@ -213,6 +224,15 @@ namespace SkinCareSystem.Services.InternalServices.Services
 
         public async Task<IServiceResult> UpdateRoutineInstanceAsync(Guid instanceId, RoutineInstanceUpdateDto dto)
         {
+            if (dto.AdherenceScore.HasValue && (dto.AdherenceScore < 0 || dto.AdherenceScore > 100))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "Adherence score must be between 0 and 100."
+                };
+            }
+
             var instance = await _unitOfWork.RoutineInstanceRepository.GetByIdAsync(instanceId);
             if (instance == null)
             {
@@ -252,6 +272,11 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 Status = sanitizedStatus
             };
 
+            if (dto.AdherenceScore.HasValue)
+            {
+                instance.adherence_score = dto.AdherenceScore.Value;
+            }
+
             instance.ApplyUpdate(updateDto);
             await _unitOfWork.RoutineInstanceRepository.UpdateAsync(instance);
             await _unitOfWork.SaveAsync();
@@ -276,7 +301,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            instance.status = "deleted";
+            instance.status = "cancelled";
             instance.end_date ??= DateOnly.FromDateTime(DateTime.UtcNow);
             await _unitOfWork.RoutineInstanceRepository.UpdateAsync(instance);
             await _unitOfWork.SaveAsync();
@@ -289,11 +314,144 @@ namespace SkinCareSystem.Services.InternalServices.Services
             };
         }
 
+        public async Task<IServiceResult> UpdateRoutineInstanceStatusAsync(Guid instanceId, string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "Status is required."
+                };
+            }
+
+            var instance = await _unitOfWork.RoutineInstanceRepository.GetByIdAsync(instanceId);
+            if (instance == null)
+            {
+                return new ServiceResult
+                {
+                    Status = Const.WARNING_NO_DATA_CODE,
+                    Message = "Routine instance not found"
+                };
+            }
+
+            var currentStatus = NormalizeStatus(instance.status);
+            var nextStatus = NormalizeStatus(status);
+
+            if (!AllowedStatuses.Contains(nextStatus))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = $"Invalid routine instance status '{status}'."
+                };
+            }
+
+            if (!IsValidTransition(currentStatus, nextStatus))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = $"Không thể chuyển trạng thái từ '{currentStatus}' sang '{nextStatus}'."
+                };
+            }
+
+            instance.status = nextStatus;
+            if (nextStatus is "cancelled" or "completed")
+            {
+                instance.end_date ??= DateOnly.FromDateTime(DateTime.UtcNow);
+            }
+
+            await _unitOfWork.RoutineInstanceRepository.UpdateAsync(instance);
+            await _unitOfWork.SaveAsync();
+
+            return new ServiceResult
+            {
+                Status = Const.SUCCESS_UPDATE_CODE,
+                Message = Const.SUCCESS_UPDATE_MSG,
+                Data = instance.ToDto()
+            };
+        }
+
+        public async Task<IServiceResult> RecalculateAdherenceScoreAsync(Guid instanceId)
+        {
+            var instance = await _unitOfWork.RoutineInstanceRepository.GetByIdAsync(instanceId);
+            if (instance == null)
+            {
+                return new ServiceResult
+                {
+                    Status = Const.WARNING_NO_DATA_CODE,
+                    Message = "Routine instance not found"
+                };
+            }
+
+            var progresses = await _unitOfWork.RoutineProgressRepository.GetByInstanceIdAsync(instanceId);
+            ApplyAdherenceMetrics(instance, progresses);
+
+            await _unitOfWork.RoutineInstanceRepository.UpdateAsync(instance);
+            await _unitOfWork.SaveAsync();
+
+            return new ServiceResult
+            {
+                Status = Const.SUCCESS_UPDATE_CODE,
+                Message = Const.SUCCESS_UPDATE_MSG,
+                Data = instance.ToDto()
+            };
+        }
+
         private static string NormalizeStatus(string status)
         {
             return string.IsNullOrWhiteSpace(status)
-                ? "active"
+                ? "planned"
                 : status.Trim().ToLowerInvariant();
+        }
+
+        private static bool IsValidTransition(string current, string next)
+        {
+            if (string.Equals(current, next, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return (current, next) switch
+            {
+                ("planned", "active") => true,
+                ("planned", "cancelled") => true,
+                ("active", "paused") => true,
+                ("active", "completed") => true,
+                ("active", "cancelled") => true,
+                ("paused", "active") => true,
+                ("paused", "cancelled") => true,
+                _ => false
+            };
+        }
+
+        private static void ApplyAdherenceMetrics(RoutineInstance instance, IReadOnlyList<RoutineProgress> progressLogs)
+        {
+            if (progressLogs == null || progressLogs.Count == 0)
+            {
+                instance.adherence_score = null;
+                return;
+            }
+
+            var completed = progressLogs.Count(p => string.Equals(p.status, "completed", StringComparison.OrdinalIgnoreCase));
+            var missed = progressLogs.Count(p => string.Equals(p.status, "missed", StringComparison.OrdinalIgnoreCase));
+            var denominator = completed + missed;
+
+            instance.adherence_score = denominator == 0
+                ? null
+                : Math.Round((decimal)completed / denominator * 100m, 2);
+
+            if (progressLogs.Count > 0 && string.Equals(instance.status, "planned", StringComparison.OrdinalIgnoreCase))
+            {
+                instance.status = "active";
+            }
+
+            if (progressLogs.Count > 0 && progressLogs.All(p => string.Equals(p.status, "completed", StringComparison.OrdinalIgnoreCase)))
+            {
+                instance.status = "completed";
+                instance.end_date ??= DateOnly.FromDateTime(DateTime.UtcNow);
+            }
         }
     }
 }

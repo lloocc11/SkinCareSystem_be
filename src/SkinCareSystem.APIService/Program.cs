@@ -8,14 +8,15 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using CloudinaryDotNet;
 using Swashbuckle.AspNetCore.Annotations;
 using SkinCareSystem.Repositories.DBContext;
 using SkinCareSystem.Repositories.UnitOfWork;
+using SkinCareSystem.Repositories.Models;
 using SkinCareSystem.Services.ExternalServices.IServices;
 using SkinCareSystem.Services.ExternalServices.Services;
-using SkinCareSystem.Services.Consultations;
 using SkinCareSystem.Services.InternalServices.IServices;
 using SkinCareSystem.Services.InternalServices.Services;
 using SkinCareSystem.Services.Options;
@@ -29,23 +30,24 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
                       ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<SkinCareSystemDbContext>(options =>
 {
-    options.UseNpgsql(connectionString);
+    options.UseNpgsql(connectionString, npgsql => npgsql.UseVector());
 });
 
 builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+builder.Services.AddScoped<ILocalAuthService, LocalAuthService>();
 builder.Services.AddScoped<IChatSessionService, ChatSessionService>();
 builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
 builder.Services.AddScoped<IAiChatService, AiChatService>();
 builder.Services.AddScoped<IAIAnalysisService, AIAnalysisService>();
 builder.Services.AddScoped<IAIResponseService, AIResponseService>();
-builder.Services.AddScoped<ISimpleConsultationService, SimpleConsultationService>();
-
 // Routine Services
 builder.Services.AddScoped<IRoutineService, RoutineService>();
+builder.Services.AddScoped<IRoutineRecommendationService, RoutineRecommendationService>();
 builder.Services.AddScoped<IRoutineStepService, RoutineStepService>();
 builder.Services.AddScoped<IRoutineInstanceService, RoutineInstanceService>();
 builder.Services.AddScoped<IRoutineProgressService, RoutineProgressService>();
@@ -69,6 +71,13 @@ builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
 builder.Services.AddScoped<IMedicalDocumentService, MedicalDocumentService>();
 builder.Services.AddScoped<IDocumentChunkService, DocumentChunkService>();
 builder.Services.AddScoped<IMedicalDocumentAssetService, MedicalDocumentAssetService>();
+builder.Services.AddScoped<ITextExtractorService, TextExtractorService>();
+builder.Services.AddScoped<IEmbeddingService, EmbeddingService>();
+builder.Services.AddScoped<IDocumentIngestService, DocumentIngestService>();
+builder.Services.AddScoped<IRagRetriever, RagRetriever>();
+builder.Services.AddScoped<IAiRoutineGeneratorService, AiRoutineGeneratorService>();
+builder.Services.AddScoped<IRoutineDraftWriter, RoutineDraftWriter>();
+builder.Services.AddScoped<IAiRoutineManagementService, AiRoutineManagementService>();
 
 // Consent Record Service
 builder.Services.AddScoped<IConsentRecordService, ConsentRecordService>();

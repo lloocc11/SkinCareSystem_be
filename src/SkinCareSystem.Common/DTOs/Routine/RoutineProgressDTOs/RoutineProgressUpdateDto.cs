@@ -8,5 +8,7 @@ namespace SkinCareSystem.Common.DTOs.Routine
         public string? PhotoUrl { get; set; }
         public string? Note { get; set; }
         public string? Status { get; set; }
+        public int? IrritationLevel { get; set; }
+        public string? MoodNote { get; set; }
     }
 }

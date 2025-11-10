@@ -7,6 +7,7 @@ using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.ExternalServices.IServices;
+using SkinCareSystem.Services.InternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers
 {
@@ -20,6 +21,7 @@ namespace SkinCareSystem.APIService.Controllers
         private readonly IJwtService _jwtService;
         private readonly IHostEnvironment _environment;
         private readonly IGoogleAuthService _googleAuthService;
+        private readonly ILocalAuthService _localAuthService;
         private readonly ILogger<AuthController> _logger;
 
         public AuthController(
@@ -27,12 +29,14 @@ namespace SkinCareSystem.APIService.Controllers
             IJwtService jwtService, 
             IHostEnvironment environment,
             IGoogleAuthService googleAuthService,
+            ILocalAuthService localAuthService,
             ILogger<AuthController> logger)
         {
             _unitOfWork = unitOfWork;
             _jwtService = jwtService;
             _environment = environment;
             _googleAuthService = googleAuthService;
+            _localAuthService = localAuthService;
             _logger = logger;
         }
 
@@ -88,6 +92,38 @@ namespace SkinCareSystem.APIService.Controllers
             if (result.Status == 201 && result.Data is GoogleAuthResponseDto createdUser)
                 return ToHttpResponse(result, $"/api/users/{createdUser.UserId}");
 
+            return ToHttpResponse(result);
+        }
+
+        /// <summary>
+        /// POST /api/auth/local/register - Register using email & password (local auth)
+        /// </summary>
+        [HttpPost("local/register")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Register([FromBody] LocalRegisterRequestDto request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, Const.ERROR_INVALID_DATA_MSG));
+            }
+
+            var result = await _localAuthService.RegisterAsync(request).ConfigureAwait(false);
+            return ToHttpResponse(result);
+        }
+
+        /// <summary>
+        /// POST /api/auth/local/login - Login using email & password (local auth)
+        /// </summary>
+        [HttpPost("local/login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Login([FromBody] LocalLoginRequestDto request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, Const.ERROR_INVALID_DATA_MSG));
+            }
+
+            var result = await _localAuthService.LoginAsync(request).ConfigureAwait(false);
             return ToHttpResponse(result);
         }
     }

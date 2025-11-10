@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace SkinCareSystem.Common.DTOs.Chat
 {
@@ -15,5 +16,7 @@ namespace SkinCareSystem.Common.DTOs.Chat
         public bool RoutineGenerated { get; set; }
 
         public double? Confidence { get; set; }
+
+        public IReadOnlyList<RoutineSuggestionDto> SuggestedRoutines { get; set; } = Array.Empty<RoutineSuggestionDto>();
     }
 }

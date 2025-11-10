@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Routine;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -21,7 +22,9 @@ namespace SkinCareSystem.Services.Mapping
                 CompletedAt = progress.completed_at,
                 PhotoUrl = progress.photo_url,
                 Note = progress.note,
-                Status = progress.status
+                Status = progress.status,
+                IrritationLevel = progress.irritation_level,
+                MoodNote = progress.mood_note
             };
         }
 
@@ -29,7 +32,9 @@ namespace SkinCareSystem.Services.Mapping
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-            var completedAt = dto.CompletedAt == default ? DateTime.UtcNow : dto.CompletedAt;
+            var completedAt = dto.CompletedAt == default
+                ? DateTimeHelper.UtcNowUnspecified()
+                : DateTimeHelper.EnsureUnspecified(dto.CompletedAt);
             var status = dto.Status ?? "completed";
 
             return dto.ToEntity(completedAt, status);
@@ -44,10 +49,12 @@ namespace SkinCareSystem.Services.Mapping
                 progress_id = Guid.NewGuid(),
                 instance_id = dto.InstanceId,
                 step_id = dto.StepId,
-                completed_at = completedAt,
+                completed_at = DateTimeHelper.EnsureUnspecified(completedAt),
                 photo_url = dto.PhotoUrl,
                 note = dto.Note,
-                status = status
+                status = status,
+                irritation_level = dto.IrritationLevel,
+                mood_note = dto.MoodNote
             };
         }
 
@@ -58,7 +65,7 @@ namespace SkinCareSystem.Services.Mapping
 
             if (dto.CompletedAt.HasValue)
             {
-                progress.completed_at = dto.CompletedAt.Value;
+                progress.completed_at = DateTimeHelper.EnsureUnspecified(dto.CompletedAt.Value);
             }
 
             if (dto.PhotoUrl != null)
@@ -74,6 +81,16 @@ namespace SkinCareSystem.Services.Mapping
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
                 progress.status = dto.Status;
+            }
+
+            if (dto.IrritationLevel.HasValue)
+            {
+                progress.irritation_level = dto.IrritationLevel;
+            }
+
+            if (dto.MoodNote != null)
+            {
+                progress.mood_note = dto.MoodNote;
             }
         }
 
@@ -95,7 +112,9 @@ namespace SkinCareSystem.Services.Mapping
                 CompletedAt = progress.completed_at,
                 Status = progress.status,
                 PhotoUrl = progress.photo_url,
-                Note = progress.note
+                Note = progress.note,
+                IrritationLevel = progress.irritation_level,
+                MoodNote = progress.mood_note
             };
         }
     }
