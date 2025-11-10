@@ -183,6 +183,58 @@ public class AiRoutinesController : BaseApiController
         return ToHttpResponse(new ServiceResult(Const.SUCCESS_CREATE_CODE, "Generate routine from upload success", response));
     }
 
+    [HttpPost("generate-from-text")]
+    public async Task<IActionResult> GenerateRoutineFromText([FromBody] GenerateRoutineFromTextRequestDto request)
+    {
+        if (!TryGetRequesterId(out var requesterId, out var unauthorizedResponse))
+        {
+            return unauthorizedResponse!;
+        }
+
+        if (request == null || (string.IsNullOrWhiteSpace(request.Prompt) && string.IsNullOrWhiteSpace(request.Context)))
+        {
+            return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, "Prompt hoặc context là bắt buộc."));
+        }
+
+        var normalizedConditions = NormalizeConditions(request.TargetConditions);
+        var baseRequest = new GenerateRoutineRequestDto
+        {
+            Query = string.IsNullOrWhiteSpace(request.Prompt)
+                ? "Routine được tạo từ văn bản người dùng cung cấp"
+                : request.Prompt.Trim(),
+            TargetSkinType = request.TargetSkinType,
+            TargetConditions = normalizedConditions,
+            AdditionalContext = request.Context?.Trim(),
+            AutoSaveAsDraft = request.AutoSaveAsDraft
+        };
+
+        var draft = await _aiRoutineGenerator
+            .GenerateAsync(baseRequest, Array.Empty<ChunkHit>())
+            .ConfigureAwait(false);
+
+        draft.IsRagBased = false;
+        draft.Source = "llm_text";
+
+        Guid? routineId = null;
+        if (request.AutoSaveAsDraft)
+        {
+            routineId = await _routineDraftWriter
+                .SaveDraftAsync(draft, requesterId, request.TargetSkinType, normalizedConditions)
+                .ConfigureAwait(false);
+        }
+
+        var response = new GenerateRoutineResponseDto
+        {
+            RoutineId = routineId,
+            Routine = draft,
+            Citations = new List<RoutineCitationDto>(),
+            IsRagBased = false,
+            Source = "llm_text"
+        };
+
+        return ToHttpResponse(new ServiceResult(Const.SUCCESS_CREATE_CODE, "Generate routine from text success", response));
+    }
+
     [HttpPost("{routineId:guid}/publish")]
     public async Task<IActionResult> PublishRoutine(Guid routineId)
     {

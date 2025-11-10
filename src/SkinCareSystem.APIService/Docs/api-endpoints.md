@@ -334,6 +334,24 @@ Các endpoint dưới đây đã implement. RAG fallback: nếu không có Docum
 - **POST** `/api/ai/routines/{routineId}/publish`
 - **POST** `/api/ai/routines/{routineId}/archive`
 
+### 6.5 Generate routine từ text (chat)
+- **POST** `/api/ai/routines/generate-from-text`
+- **Auth**: `admin,specialist`
+- **Body**
+```json
+{
+  "prompt": "Mô tả nhu cầu routine (chuyển từ chat)",
+  "context": "Nếu có, copy toàn bộ nội dung chat/note muốn AI đọc.",
+  "targetSkinType": "dry",
+  "targetConditions": ["eczema"],
+  "autoSaveAsDraft": true
+}
+```
+- **Behavior**:
+  - Không dùng RAG; LLM chỉ dựa vào `prompt` và `context`.
+  - Nếu `autoSaveAsDraft=true`, lưu routine_type=`template`, status=`draft`, user_id=caller.
+- **Response**: giống các endpoint generate khác nhưng `source = "llm_text"` và `citations = []`.
+
 ---
 
 ## 7. Quy ước lỗi & header
