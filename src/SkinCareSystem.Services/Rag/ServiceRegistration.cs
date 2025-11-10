@@ -16,7 +16,6 @@ public static class ServiceRegistration
         services.AddScoped<IEmbeddingClient, OpenAIEmbeddingClient>();
         services.AddScoped<ILlmClient, OpenAILlmClient>();
         services.AddScoped<IRagSearchService, RagSearchService>();
-        services.AddScoped<IConsultationService, ConsultationService>();
 
         return services;
     }

@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SkinCareSystem.Common.DTOs.Pagination;
 using SkinCareSystem.Common.DTOs.UserDTOs;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Common.Utils;
+using SkinCareSystem.Repositories.Models;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.InternalServices.IServices;
@@ -17,10 +20,12 @@ namespace SkinCareSystem.Services.InternalServices.Services
     public class UserService: IUserService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPasswordHasher<User> _passwordHasher;
 
-        public UserService(IUnitOfWork unitOfWork)
+        public UserService(IUnitOfWork unitOfWork, IPasswordHasher<User> passwordHasher)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
         }
         
 
@@ -38,6 +43,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             try
             {
                 var query = _unitOfWork.UserRepository.GetAllQueryable()
+                    .Include(u => u.role)
                     .OrderBy(u => u.full_name);
 
                 var totalItems = await query.CountAsync();
@@ -90,7 +96,9 @@ namespace SkinCareSystem.Services.InternalServices.Services
 
         public async Task<IServiceResult> GetUserByIdAsync(Guid userId)
         {
-            var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
+            var user = await _unitOfWork.UserRepository.GetAllQueryable()
+                .Include(u => u.role)
+                .FirstOrDefaultAsync(u => u.user_id == userId);
             if (user == null)
             {
                 return new ServiceResult
@@ -130,14 +138,39 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            var existingByGoogle = await _unitOfWork.UserRepository.GetByGoogleIdAsync(dto.GoogleId);
-            if (existingByGoogle != null)
+            var normalizedProvider = NormalizeProvider(dto.AuthProvider);
+
+            if (normalizedProvider == "google" && string.IsNullOrWhiteSpace(dto.GoogleId))
             {
                 return new ServiceResult
                 {
-                    Status = Const.WARNING_DATA_EXISTED_CODE,
-                    Message = "Google account already registered"
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "GoogleId is required for Google accounts"
                 };
+            }
+
+            if (normalizedProvider == "local" && string.IsNullOrWhiteSpace(dto.Password))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = "Password is required for local accounts"
+                };
+            }
+
+            var normalizedGoogleId = dto.GoogleId?.Trim();
+
+            if (normalizedProvider == "google" && normalizedGoogleId != null)
+            {
+                var existingByGoogle = await _unitOfWork.UserRepository.GetByGoogleIdAsync(normalizedGoogleId);
+                if (existingByGoogle != null)
+                {
+                    return new ServiceResult
+                    {
+                        Status = Const.WARNING_DATA_EXISTED_CODE,
+                        Message = "Google account already registered"
+                    };
+                }
             }
 
             var role = await _unitOfWork.RoleRepository.GetByIdAsync(dto.RoleId);
@@ -150,8 +183,13 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            var entity = dto.ToEntity();
+            var entity = dto.ToEntity(normalizedProvider);
             entity.role = role;
+
+            if (normalizedProvider == "local" && dto.Password != null)
+            {
+                entity.password_hash = _passwordHasher.HashPassword(entity, dto.Password.Trim());
+            }
 
             await _unitOfWork.UserRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
@@ -210,6 +248,11 @@ namespace SkinCareSystem.Services.InternalServices.Services
             await _unitOfWork.UserRepository.UpdateAsync(user);
             await _unitOfWork.SaveAsync();
 
+            if (user.role == null)
+            {
+                user.role = await _unitOfWork.RoleRepository.GetByIdAsync(user.role_id);
+            }
+
             return new ServiceResult
             {
                 Status = Const.SUCCESS_UPDATE_CODE,
@@ -231,10 +274,15 @@ namespace SkinCareSystem.Services.InternalServices.Services
             }
 
             user.status = "inactive";
-            user.updated_at = DateTime.Now;
+            user.updated_at = DateTimeHelper.UtcNowUnspecified();
 
             await _unitOfWork.UserRepository.UpdateAsync(user);
             await _unitOfWork.SaveAsync();
+
+            if (user.role == null)
+            {
+                user.role = await _unitOfWork.RoleRepository.GetByIdAsync(user.role_id);
+            }
 
             return new ServiceResult
             {
@@ -242,6 +290,15 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 Message = Const.SUCCESS_DELETE_MSG,
                 Data = user.ToUserDto()
             };
+        }
+
+        private static string NormalizeProvider(string? provider)
+        {
+            var normalized = string.IsNullOrWhiteSpace(provider)
+                ? "google"
+                : provider.Trim().ToLowerInvariant();
+
+            return normalized == "local" ? "local" : "google";
         }
     }
 }

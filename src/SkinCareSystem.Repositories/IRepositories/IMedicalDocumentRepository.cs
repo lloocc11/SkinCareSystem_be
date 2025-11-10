@@ -15,5 +15,6 @@ namespace SkinCareSystem.Repositories.IRepositories
     {
         Task<IReadOnlyList<DocumentChunk>> GetByDocumentIdAsync(Guid docId);
         Task<DocumentChunk?> GetByIdWithDetailsAsync(Guid chunkId);
+        Task<int> DeleteByDocumentIdAsync(Guid docId);
     }
 }

@@ -10,5 +10,6 @@ namespace SkinCareSystem.Repositories.IRepositories
     {
         Task<IReadOnlyList<RoutineStep>> GetByRoutineIdAsync(Guid routineId);
         Task<RoutineStep?> GetByIdWithDetailsAsync(Guid stepId);
+        Task<int> DeleteByRoutineIdAsync(Guid routineId);
     }
 }

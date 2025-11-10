@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.UserDTOs;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -19,6 +20,8 @@ namespace SkinCareSystem.Services.Mapping
                 FullName = user.full_name,
                 Email = user.email,
                 GoogleId = user.google_id,
+                AuthProvider = user.auth_provider,
+                HasPassword = !string.IsNullOrWhiteSpace(user.password_hash),
                 RoleName = user.role?.name ?? string.Empty,
                 SkinType = user.skin_type,
                 RoleId = user.role_id,
@@ -29,22 +32,28 @@ namespace SkinCareSystem.Services.Mapping
             };
         }
 
-        public static User ToEntity(this UserCreateDto dto)
+        public static User ToEntity(this UserCreateDto dto, string normalizedProvider)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            normalizedProvider = string.IsNullOrWhiteSpace(normalizedProvider)
+                ? "google"
+                : normalizedProvider.Trim().ToLowerInvariant();
 
             return new User
             {
                 user_id = Guid.NewGuid(),
                 full_name = dto.FullName,
                 email = dto.Email.Trim().ToLowerInvariant(),
-                google_id = dto.GoogleId,
+                google_id = normalizedProvider == "google" ? dto.GoogleId?.Trim() : null,
+                password_hash = null,
+                auth_provider = normalizedProvider,
                 role_id = dto.RoleId,
                 skin_type = dto.SkinType,
                 status = dto.Status,
                 date_of_birth = dto.DateOfBirth,
-                created_at = DateTime.Now,
-                updated_at = DateTime.Now
+                created_at = DateTimeHelper.UtcNowUnspecified(),
+                updated_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 
@@ -83,7 +92,7 @@ namespace SkinCareSystem.Services.Mapping
                 user.status = dto.Status;
             }
 
-            user.updated_at = DateTime.Now;
+            user.updated_at = DateTimeHelper.UtcNowUnspecified();
         }
     }
 }

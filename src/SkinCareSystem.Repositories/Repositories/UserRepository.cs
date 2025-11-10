@@ -29,5 +29,17 @@ namespace SkinCareSystem.Repositories.Repositories
                                  .Include(u => u.role)
                                  .FirstOrDefaultAsync(u => u.google_id == normalizedGoogleId);
         }
+
+        public async Task<User?> GetByEmailAndProviderAsync(string email, string provider)
+        {
+            var normalizedEmail = email.Trim().ToLower();
+            var normalizedProvider = provider.Trim().ToLower();
+
+            return await _context.Set<User>()
+                                 .AsNoTracking()
+                                 .Include(u => u.role)
+                                 .FirstOrDefaultAsync(u => u.email.ToLower() == normalizedEmail &&
+                                                           u.auth_provider.ToLower() == normalizedProvider);
+        }
     }
 }

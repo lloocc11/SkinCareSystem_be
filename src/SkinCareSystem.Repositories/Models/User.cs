@@ -3,26 +3,63 @@ using System.Collections.Generic;
 
 namespace SkinCareSystem.Repositories.Models;
 
+/// <summary>
+/// Thông tin người dùng hệ thống.
+/// </summary>
 public partial class User
 {
+    /// <summary>
+    /// Khóa chính người dùng.
+    /// </summary>
     public Guid user_id { get; set; }
 
+    /// <summary>
+    /// Họ và tên đầy đủ.
+    /// </summary>
     public string full_name { get; set; } = null!;
 
+    /// <summary>
+    /// Email đăng nhập duy nhất.
+    /// </summary>
     public string email { get; set; } = null!;
 
-    public string google_id { get; set; } = null!;
+    /// <summary>
+    /// ID Google dùng để xác thực.
+    /// </summary>
+    public string? google_id { get; set; }
 
+    public string? password_hash { get; set; }
+
+    public string auth_provider { get; set; } = null!;
+
+    /// <summary>
+    /// Vai trò của người dùng.
+    /// </summary>
     public Guid role_id { get; set; }
 
+    /// <summary>
+    /// Loại da của người dùng.
+    /// </summary>
     public string? skin_type { get; set; }
 
+    /// <summary>
+    /// Ngày sinh của người dùng.
+    /// </summary>
     public DateOnly? date_of_birth { get; set; }
 
+    /// <summary>
+    /// Trạng thái người dùng (active/inactive/banned).
+    /// </summary>
     public string status { get; set; } = null!;
 
+    /// <summary>
+    /// Thời điểm tạo người dùng.
+    /// </summary>
     public DateTime? created_at { get; set; }
 
+    /// <summary>
+    /// Thời điểm cập nhật người dùng.
+    /// </summary>
     public DateTime? updated_at { get; set; }
 
     public virtual ICollection<AIAnalysis> AIAnalyses { get; set; } = new List<AIAnalysis>();

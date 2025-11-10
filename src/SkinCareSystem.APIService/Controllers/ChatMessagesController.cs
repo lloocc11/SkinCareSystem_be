@@ -48,14 +48,11 @@ namespace SkinCareSystem.APIService.Controllers
             }
 
             var isAdmin = User.IsInRole("admin");
+            var isSpecialist = User.IsInRole("specialist");
 
             dto.SessionId = sessionId;
-            if (!isAdmin && requesterId != dto.UserId)
-            {
-                return ToHttpResponse(new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG));
-            }
 
-            var accessError = await EnsureSessionAccessAsync(sessionId, requesterId, isAdmin).ConfigureAwait(false);
+            var (accessError, sessionDto) = await EnsureSessionAccessAsync(sessionId, requesterId, isAdmin, isSpecialist).ConfigureAwait(false);
             if (accessError != null)
             {
                 return ToHttpResponse(accessError);
@@ -65,6 +62,15 @@ namespace SkinCareSystem.APIService.Controllers
             {
                 return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, Const.ERROR_INVALID_DATA_MSG));
             }
+
+            if (isSpecialist && !isAdmin)
+            {
+                dto.UserId = requesterId;
+                var specialistResult = await _chatMessageService.CreateMessageAsync(dto).ConfigureAwait(false);
+                return ToHttpResponse(specialistResult);
+            }
+
+            dto.UserId = isAdmin ? sessionDto!.UserId : requesterId;
 
             var result = await _aiChatService.ChatInSessionAsync(dto).ConfigureAwait(false);
             return ToHttpResponse(result);
@@ -82,7 +88,7 @@ namespace SkinCareSystem.APIService.Controllers
             }
 
             var isAdmin = User.IsInRole("admin");
-            var accessError = await EnsureSessionAccessAsync(sessionId, requesterId, isAdmin).ConfigureAwait(false);
+            var (accessError, _) = await EnsureSessionAccessAsync(sessionId, requesterId, isAdmin, User.IsInRole("specialist")).ConfigureAwait(false);
             if (accessError != null)
             {
                 return ToHttpResponse(accessError);
@@ -117,27 +123,21 @@ namespace SkinCareSystem.APIService.Controllers
             return true;
         }
 
-        private async Task<ServiceResult?> EnsureSessionAccessAsync(Guid sessionId, Guid requesterId, bool isAdmin)
+        private async Task<(ServiceResult? Error, ChatSessionDto? Session)> EnsureSessionAccessAsync(Guid sessionId, Guid requesterId, bool isAdmin, bool isSpecialist)
         {
             var sessionResult = await _chatSessionService.GetSessionAsync(sessionId, includeMessages: false).ConfigureAwait(false);
-            if (sessionResult.Status != Const.SUCCESS_READ_CODE)
+            if (sessionResult.Status != Const.SUCCESS_READ_CODE || sessionResult.Data is not ChatSessionDto sessionDto)
             {
-                return sessionResult as ServiceResult ?? new ServiceResult(sessionResult.Status, sessionResult.Message ?? string.Empty);
+                var error = sessionResult as ServiceResult ?? new ServiceResult(sessionResult.Status, sessionResult.Message ?? string.Empty);
+                return (error, null);
             }
 
-            if (sessionResult.Data is ChatSessionDto sessionDto)
+            if (!isAdmin && !isSpecialist && sessionDto.UserId != requesterId)
             {
-                if (!isAdmin && sessionDto.UserId != requesterId)
-                {
-                    return new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG);
-                }
-            }
-            else
-            {
-                _logger.LogWarning("Unexpected payload type when validating session {SessionId}", sessionId);
+                return (new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG), null);
             }
 
-            return null;
+            return (null, sessionDto);
         }
     }
 }

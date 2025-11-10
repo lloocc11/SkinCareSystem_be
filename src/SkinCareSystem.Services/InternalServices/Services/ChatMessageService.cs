@@ -42,7 +42,12 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Session not found");
             }
 
-            var user = await _unitOfWork.UserRepository.GetByIdAsync(dto.UserId);
+            if (!dto.UserId.HasValue)
+            {
+                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "UserId is required for chat messages");
+            }
+
+            var user = await _unitOfWork.UserRepository.GetByIdAsync(dto.UserId.Value);
             if (user == null)
             {
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "User not found");
@@ -67,7 +72,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             var messageType = DetermineMessageType(hasText, hasImage);
             var timestamp = DateTimeHelper.UtcNowUnspecified();
 
-            var entity = dto.ToEntity("user", messageType, timestamp);
+            var entity = dto.ToEntity(messageType, timestamp);
 
             await _unitOfWork.ChatMessageRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
@@ -75,7 +80,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
             return new ServiceResult(StatusCodes.Status201Created, Const.SUCCESS_CREATE_MSG, entity.ToDto());
         }
 
-        public async Task<IServiceResult> UploadImageMessageAsync(Guid sessionId, Guid userId, string role, IFormFile file, string? messageType = null)
+        public async Task<IServiceResult> UploadImageMessageAsync(Guid sessionId, Guid userId, IFormFile file, string? messageType = null)
         {
             if (file == null || file.Length == 0)
             {
@@ -94,7 +99,6 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "User not found");
             }
 
-            var roleValue = string.IsNullOrWhiteSpace(role) ? "user" : role.ToLowerInvariant();
             var typeValue = string.IsNullOrWhiteSpace(messageType) ? "image" : messageType.ToLowerInvariant();
 
             string imageUrl;
@@ -120,7 +124,7 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 SessionId = sessionId,
                 UserId = userId,
                 ImageUrl = imageUrl
-            }.ToEntity(roleValue, typeValue, DateTimeHelper.UtcNowUnspecified());
+            }.ToEntity(typeValue, DateTimeHelper.UtcNowUnspecified());
 
             await _unitOfWork.ChatMessageRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SkinCareSystem.Common.DTOs.MedicalDocument;
 using SkinCareSystem.Common.DTOs.MedicalDocument.MedicalDocumentAssetDTOs;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -53,8 +54,8 @@ namespace SkinCareSystem.Services.Mapping
                 content = dto.Content,
                 source = dto.Source,
                 status = dto.Status ?? "active",
-                last_updated = DateTime.Now,
-                created_at = DateTime.Now
+                last_updated = DateTimeHelper.UtcNowUnspecified(),
+                created_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 
@@ -72,7 +73,7 @@ namespace SkinCareSystem.Services.Mapping
             if (!string.IsNullOrWhiteSpace(dto.Status))
                 document.status = dto.Status;
 
-            document.last_updated = DateTime.Now;
+            document.last_updated = DateTimeHelper.UtcNowUnspecified();
         }
     }
 }

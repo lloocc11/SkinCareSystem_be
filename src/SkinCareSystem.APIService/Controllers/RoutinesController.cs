@@ -76,6 +76,7 @@ namespace SkinCareSystem.APIService.Controllers
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPost]
+        [Authorize(Roles = "admin,specialist")]
         public async Task<IActionResult> Create([FromBody] RoutineCreateDto dto)
         {
             if (!ModelState.IsValid)
@@ -90,13 +91,18 @@ namespace SkinCareSystem.APIService.Controllers
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var isAdmin = User.IsInRole("admin");
 
-            if (!isAdmin && (!Guid.TryParse(userIdClaim, out var requesterId) || requesterId != dto.UserId))
+            if (!isAdmin)
             {
-                return ToHttpResponse(new ServiceResult
+                if (!Guid.TryParse(userIdClaim, out var requesterId))
                 {
-                    Status = Const.UNAUTHORIZED_ACCESS_CODE,
-                    Message = Const.UNAUTHORIZED_ACCESS_MSG
-                });
+                    return ToHttpResponse(new ServiceResult
+                    {
+                        Status = Const.UNAUTHORIZED_ACCESS_CODE,
+                        Message = Const.UNAUTHORIZED_ACCESS_MSG
+                    });
+                }
+
+                dto.UserId = requesterId;
             }
 
             var result = await _routineService.CreateRoutineAsync(dto);
@@ -110,6 +116,7 @@ namespace SkinCareSystem.APIService.Controllers
         /// <param name="dto"></param>
         /// <returns></returns>
         [HttpPut("{id:guid}")]
+        [Authorize(Roles = "admin,specialist")]
         public async Task<IActionResult> Update(Guid id, [FromBody] RoutineUpdateDto dto)
         {
             if (!ModelState.IsValid)
@@ -130,6 +137,7 @@ namespace SkinCareSystem.APIService.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpDelete("{id:guid}")]
+        [Authorize(Roles = "admin,specialist")]
         public async Task<IActionResult> Delete(Guid id)
         {
             var result = await _routineService.DeleteRoutineAsync(id);

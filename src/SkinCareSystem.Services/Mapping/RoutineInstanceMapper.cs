@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Routine;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -22,6 +23,7 @@ namespace SkinCareSystem.Services.Mapping
                 EndDate = instance.end_date,
                 Status = instance.status,
                 CreatedAt = instance.created_at,
+                AdherenceScore = instance.adherence_score,
                 UserFullName = instance.user?.full_name
             };
         }
@@ -37,8 +39,9 @@ namespace SkinCareSystem.Services.Mapping
                 user_id = dto.UserId,
                 start_date = dto.StartDate,
                 end_date = dto.EndDate,
-                status = dto.Status ?? "active",
-                created_at = DateTime.UtcNow
+                status = dto.Status ?? "planned",
+                created_at = DateTimeHelper.UtcNowUnspecified(),
+                adherence_score = null
             };
         }
 
@@ -55,6 +58,11 @@ namespace SkinCareSystem.Services.Mapping
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
                 instance.status = dto.Status;
+            }
+
+            if (dto.AdherenceScore.HasValue)
+            {
+                instance.adherence_score = dto.AdherenceScore;
             }
         }
     }

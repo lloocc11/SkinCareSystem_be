@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.AI;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -35,8 +36,8 @@ namespace SkinCareSystem.Services.Mapping
                 raw_input = dto.RawInput,
                 result = dto.Result,
                 confidence = dto.Confidence,
-                created_at = DateTime.Now,
-                updated_at = DateTime.Now
+                created_at = DateTimeHelper.UtcNowUnspecified(),
+                updated_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 
@@ -64,7 +65,7 @@ namespace SkinCareSystem.Services.Mapping
                 query_id = dto.QueryId,
                 response_text = dto.ResponseText,
                 response_type = dto.ResponseType,
-                created_at = DateTime.Now
+                created_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
     }

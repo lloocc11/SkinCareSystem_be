@@ -48,5 +48,26 @@ namespace SkinCareSystem.Repositories.Repositories
                 .Include(r => r.RoutineSteps)
                 .FirstOrDefaultAsync(r => r.routine_id == routineId);
         }
+
+        public async Task<IReadOnlyList<Routine>> GetPublishedTemplatesAsync(string? targetSkinType = null)
+        {
+            var query = _context.Set<Routine>()
+                .AsNoTracking()
+                .Include(r => r.RoutineSteps)
+                .Where(r => r.routine_type == "template" && r.status == "published");
+
+            if (!string.IsNullOrWhiteSpace(targetSkinType))
+            {
+                var normalized = targetSkinType.Trim().ToLower();
+                query = query.Where(r =>
+                    r.target_skin_type == null ||
+                    r.target_skin_type.ToLower() == normalized);
+            }
+
+            return await query
+                .OrderByDescending(r => r.updated_at ?? r.created_at)
+                .Take(100)
+                .ToListAsync();
+        }
     }
 }

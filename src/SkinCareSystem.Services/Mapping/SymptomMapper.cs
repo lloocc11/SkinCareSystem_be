@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Symptom;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -33,7 +34,7 @@ namespace SkinCareSystem.Services.Mapping
                 name = dto.Name,
                 description = dto.Description,
                 example_image_url = dto.ExampleImageUrl,
-                created_at = DateTime.Now
+                created_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 

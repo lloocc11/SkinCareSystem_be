@@ -10,6 +10,9 @@ namespace SkinCareSystem.Common.DTOs.Routine
         public string? Description { get; set; }
         public int? Version { get; set; }
         public Guid? ParentRoutineId { get; set; }
+        public string RoutineType { get; set; } = "template";
+        public string? TargetSkinType { get; set; }
+        public string? TargetConditions { get; set; }
         public string Status { get; set; } = null!;
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

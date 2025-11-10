@@ -1,5 +1,6 @@
 using System;
 using SkinCareSystem.Common.DTOs.Feedback;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
 
 namespace SkinCareSystem.Services.Mapping
@@ -38,7 +39,7 @@ namespace SkinCareSystem.Services.Mapping
                 user_id = dto.UserId,
                 rating = dto.Rating,
                 comment = dto.Comment,
-                created_at = DateTime.Now
+                created_at = DateTimeHelper.UtcNowUnspecified()
             };
         }
 

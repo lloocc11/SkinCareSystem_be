@@ -14,9 +14,15 @@ namespace SkinCareSystem.Common.DTOs.UserDTOs
         [StringLength(320)]
         public string Email { get; set; } = string.Empty;
 
-        [Required]
         [StringLength(128)]
-        public string GoogleId { get; set; } = string.Empty;
+        public string? GoogleId { get; set; }
+
+        [StringLength(128, MinimumLength = 6)]
+        public string? Password { get; set; }
+
+        [Required]
+        [StringLength(20)]
+        public string AuthProvider { get; set; } = "google";
 
         [Required]
         public Guid RoleId { get; set; }

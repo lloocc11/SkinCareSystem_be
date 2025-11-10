@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -6,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using SkinCareSystem.Common.DTOs.Pagination;
 using SkinCareSystem.Common.DTOs.Routine;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
+using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.UnitOfWork;
 using SkinCareSystem.Services.Base;
 using SkinCareSystem.Services.InternalServices.IServices;
@@ -16,6 +18,15 @@ namespace SkinCareSystem.Services.InternalServices.Services
     public class RoutineService : IRoutineService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private static readonly HashSet<string> AllowedStatuses = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "draft", "published", "archived"
+        };
+
+        private static readonly HashSet<string> AllowedRoutineTypes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "template", "personalized"
+        };
 
         public RoutineService(IUnitOfWork unitOfWork)
         {
@@ -211,6 +222,31 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 }
             }
 
+            var normalizedType = NormalizeRoutineType(dto.RoutineType);
+            var normalizedStatus = NormalizeRoutineStatus(dto.Status);
+
+            if (!AllowedRoutineTypes.Contains(normalizedType))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = $"Invalid routine type '{dto.RoutineType}'."
+                };
+            }
+
+            if (!AllowedStatuses.Contains(normalizedStatus))
+            {
+                return new ServiceResult
+                {
+                    Status = Const.ERROR_VALIDATION_CODE,
+                    Message = $"Invalid routine status '{dto.Status}'."
+                };
+            }
+
+            dto.RoutineType = normalizedType;
+            dto.Status = normalizedStatus;
+            dto.Version = dto.Version <= 0 ? 1 : dto.Version;
+
             var entity = dto.ToEntity();
             await _unitOfWork.RoutineRepository.CreateAsync(entity);
             await _unitOfWork.SaveAsync();
@@ -233,6 +269,36 @@ namespace SkinCareSystem.Services.InternalServices.Services
                     Status = Const.WARNING_NO_DATA_CODE,
                     Message = "Routine not found"
                 };
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.RoutineType))
+            {
+                var normalizedType = NormalizeRoutineType(dto.RoutineType);
+                if (!AllowedRoutineTypes.Contains(normalizedType))
+                {
+                    return new ServiceResult
+                    {
+                        Status = Const.ERROR_VALIDATION_CODE,
+                        Message = $"Invalid routine type '{dto.RoutineType}'."
+                    };
+                }
+
+                dto.RoutineType = normalizedType;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Status))
+            {
+                var normalizedStatus = NormalizeRoutineStatus(dto.Status);
+                if (!AllowedStatuses.Contains(normalizedStatus))
+                {
+                    return new ServiceResult
+                    {
+                        Status = Const.ERROR_VALIDATION_CODE,
+                        Message = $"Invalid routine status '{dto.Status}'."
+                    };
+                }
+
+                dto.Status = normalizedStatus;
             }
 
             routine.ApplyUpdate(dto);
@@ -259,8 +325,8 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 };
             }
 
-            routine.status = "deleted";
-            routine.updated_at = DateTime.Now;
+            routine.status = "archived";
+            routine.updated_at = DateTimeHelper.UtcNowUnspecified();
 
             await _unitOfWork.RoutineRepository.UpdateAsync(routine);
             await _unitOfWork.SaveAsync();
@@ -271,6 +337,20 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 Message = Const.SUCCESS_DELETE_MSG,
                 Data = routine.ToDto()
             };
+        }
+
+        private static string NormalizeRoutineStatus(string? status)
+        {
+            return string.IsNullOrWhiteSpace(status)
+                ? "draft"
+                : status.Trim().ToLowerInvariant();
+        }
+
+        private static string NormalizeRoutineType(string? type)
+        {
+            return string.IsNullOrWhiteSpace(type)
+                ? "template"
+                : type.Trim().ToLowerInvariant();
         }
     }
 }

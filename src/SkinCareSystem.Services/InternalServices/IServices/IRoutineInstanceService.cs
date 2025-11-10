@@ -13,5 +13,7 @@ namespace SkinCareSystem.Services.InternalServices.IServices
         Task<IServiceResult> CreateRoutineInstanceAsync(RoutineInstanceCreateDto dto);
         Task<IServiceResult> UpdateRoutineInstanceAsync(Guid instanceId, RoutineInstanceUpdateDto dto);
         Task<IServiceResult> DeleteRoutineInstanceAsync(Guid instanceId);
+        Task<IServiceResult> UpdateRoutineInstanceStatusAsync(Guid instanceId, string status);
+        Task<IServiceResult> RecalculateAdherenceScoreAsync(Guid instanceId);
     }
 }

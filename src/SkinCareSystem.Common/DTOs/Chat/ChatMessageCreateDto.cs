@@ -7,7 +7,7 @@ namespace SkinCareSystem.Common.DTOs.Chat
     {
         public Guid SessionId { get; set; }
 
-        public Guid UserId { get; set; }
+        public Guid? UserId { get; set; }
 
         public string? Content { get; set; }
 
@@ -15,6 +15,7 @@ namespace SkinCareSystem.Common.DTOs.Chat
 
         public string? ImageUrl { get; set; }
 
+        [Obsolete("GenerateRoutine is deprecated. Routine templates are suggested automatically.")]
         public bool GenerateRoutine { get; set; } = false;
     }
 }
