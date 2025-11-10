@@ -64,8 +64,8 @@ public class RoutineDraftWriter : IRoutineDraftWriter
                 routine_id = routine.routine_id,
                 step_order = step.Order <= 0 ? 1 : step.Order,
                 instruction = step.Instruction,
-                time_of_day = string.IsNullOrWhiteSpace(step.TimeOfDay) ? "morning" : step.TimeOfDay,
-                frequency = string.IsNullOrWhiteSpace(step.Frequency) ? "daily" : step.Frequency
+                time_of_day = NormalizeTimeOfDay(step.TimeOfDay),
+                frequency = NormalizeFrequency(step.Frequency)
             };
 
             await _unitOfWork.RoutineStepRepository.CreateAsync(entity);
@@ -94,5 +94,66 @@ public class RoutineDraftWriter : IRoutineDraftWriter
             conditions
                 .Where(c => !string.IsNullOrWhiteSpace(c))
                 .Select(c => c.Trim()));
+    }
+
+    private static string NormalizeFrequency(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "daily";
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+
+        if (normalized.Contains("weekly") || normalized.Contains("tuần"))
+        {
+            return "weekly";
+        }
+
+        if (normalized.Contains("twice") || normalized.Contains("2 lần") || normalized.Contains("hai lần") || normalized.Contains("sáng và tối"))
+        {
+            return "twice_daily";
+        }
+
+        if (normalized.Contains("khi cần") || normalized.Contains("as needed") || normalized.Contains("tùy"))
+        {
+            return "as_needed";
+        }
+
+        if (normalized.Contains("daily") || normalized.Contains("mỗi ngày") || normalized.Contains("hằng ngày"))
+        {
+            return "daily";
+        }
+
+        return "daily";
+    }
+
+    private static string NormalizeTimeOfDay(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "morning";
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+
+        if (normalized.Contains("sáng") && normalized.Contains("tối"))
+        {
+            return "both";
+        }
+
+        if (normalized.Contains("both") || normalized.Contains("cả ngày"))
+        {
+            return "both";
+        }
+
+        if (normalized.Contains("tối") || normalized.Contains("evening") || normalized.Contains("night"))
+        {
+            return "evening";
+        }
+
+        return normalized.Contains("morning") || normalized.Contains("sáng")
+            ? "morning"
+            : "morning";
     }
 }
