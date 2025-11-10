@@ -1,0 +1,104 @@
+@startuml ConsultationRoutine
+title Sequence Diagram – AI Consultation & Routine Generation
+
+actor User
+participant "ChatMessagesController\n(API)" as API
+participant "AiChatService" as AiSvc
+participant "ChatMessageService / Cloudinary" as MsgSvc
+participant "RagSearchService" as Rag
+participant "OpenAI (LLM)" as LLM
+database "PostgreSQL" as DB
+
+== Start chat turn ==
+User -> API: POST /api/chat/sessions/{sessionId}/messages\n(SessionId, UserId, Content?, Image?, GenerateRoutine?)
+API -> API: Authorize & validate ownership
+
+alt Multipart includes file
+  API -> MsgSvc: UploadImageAsync(IFormFile)\n(folder = skincare_system/chat)
+  MsgSvc -> Cloudinary: upload file
+  Cloudinary --> MsgSvc: secure/image URL
+  MsgSvc --> API: ImageUrl
+end
+
+API -> AiSvc: ChatInSessionAsync(dto)
+AiSvc -> DB: ChatSessionRepository.GetByIdAsync
+AiSvc -> DB: UserRepository.GetByIdAsync
+AiSvc -> DB: ChatMessageRepository.CreateAsync\n(user message)
+AiSvc -> DB: SaveChanges
+
+== Retrieval Augmented Generation ==
+AiSvc -> Rag: SearchAsync(query = content or placeholder,\n topK = 6, sourceFilter = ["guideline:vn-2024","faq"])
+Rag -> DB: SELECT DocumentChunks.embedding <#> query\n(HNSW cosine)
+Rag -> DB: Fetch MedicalDocumentAssets by doc_id
+Rag --> AiSvc: RagItem[] (content + assetUrls)
+
+== Call OpenAI ==
+AiSvc -> LLM: ChatJsonAsync(systemPrompt,\n userPrompt(context + image URLs), schema)
+LLM --> AiSvc: JSON result (summary, recommendations,\n disclaimer, routine?, confidence)
+
+== Persist AI output ==
+AiSvc -> DB: AIAnalysisRepository.CreateAsync\n(result JSON, confidence)
+
+alt GenerateRoutine == true
+  AiSvc -> DB: RoutineRepository.CreateAsync\n(status='active', analysis_id)
+  AiSvc -> DB: RoutineStepRepository.CreateAsync (for each step)
+end
+
+AiSvc -> DB: ChatMessageRepository.CreateAsync\n(assistant message)
+AiSvc -> DB: SaveChanges (transaction commit)
+AiSvc --> API: ServiceResult(ChatTurnResponseDto)
+API --> User: HTTP 200 { userMessage, assistantMessage,\n analysisId, confidence, routineGenerated?, routineId }
+
+== Optional follow-up ==
+User -> API: GET /api/routines/{routineId}
+API -> DB: RoutineService.GetRoutineByIdAsync
+API --> User: RoutineDto
+
+User -> API: GET /api/routine-steps/routine/{routineId}
+API -> DB: RoutineStepService.GetRoutineStepsByRoutineAsync
+API --> User: RoutineStepDto[]
+
+@enduml
+
+@startuml RoutineTracking
+title Sequence Diagram – Routine Tracking (Start & Progress)
+
+actor User
+participant "RoutineInstancesController" as InstAPI
+participant "RoutineInstanceService" as InstSvc
+participant "RoutineProgressController" as ProgAPI
+participant "RoutineProgressService" as ProgSvc
+database "PostgreSQL" as DB
+
+== Start routine instance ==
+User -> InstAPI: POST /api/routine-instances (RoutineInstanceCreateDto)\n or\nPOST /api/routine-instances/routine/{routineId}/instances
+InstAPI -> InstSvc: CreateRoutineInstanceAsync(dto)
+InstSvc -> DB: RoutineRepository.GetByIdAsync
+InstSvc -> DB: UserRepository.GetByIdAsync
+InstSvc -> DB: RoutineInstanceRepository.GetActiveInstanceAsync
+InstSvc -> DB: RoutineInstanceRepository.CreateAsync
+InstSvc -> DB: SaveChanges
+InstSvc --> InstAPI: ServiceResult (instanceId, status='active')
+InstAPI --> User: HTTP 201 { instanceId }
+
+== Daily progress logging ==
+User -> ProgAPI: POST /api/routine-progress (RoutineProgressCreateDto)
+ProgAPI -> ProgSvc: CreateRoutineProgressAsync(userId, isAdmin, dto)
+ProgSvc -> DB: RoutineInstanceRepository.GetByIdAsync
+ProgSvc -> DB: Verify ownership (instance.user_id == requester)
+ProgSvc -> DB: RoutineStepRepository.GetByIdAsync
+ProgSvc -> DB: RoutineProgressRepository.GetByInstanceStepAndDateAsync
+ProgSvc -> DB: RoutineProgressRepository.CreateAsync
+ProgSvc -> DB: SaveChanges
+ProgSvc --> ProgAPI: ServiceResult(ProgressDto)
+ProgAPI --> User: HTTP 201 { progressId, status, completedAt }
+
+== View routine progress ==
+User -> ProgAPI: GET /api/routine-progress/instance/{instanceId}
+ProgAPI -> ProgSvc: GetRoutineProgressByInstanceAsync(instanceId, requesterId, isAdmin)
+ProgSvc -> DB: RoutineInstanceRepository.GetByIdAsync
+ProgSvc -> DB: RoutineProgressRepository.GetByInstanceIdAsync
+ProgSvc --> ProgAPI: ServiceResult(list of progress)
+ProgAPI --> User: HTTP 200 { progress[] }
+
+@enduml
