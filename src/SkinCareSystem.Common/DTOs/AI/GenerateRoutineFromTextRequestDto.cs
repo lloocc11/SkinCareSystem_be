@@ -19,4 +19,5 @@ public class GenerateRoutineFromTextRequestDto
     public List<string> TargetConditions { get; set; } = new();
 
     public bool AutoSaveAsDraft { get; set; } = true;
+
 }
