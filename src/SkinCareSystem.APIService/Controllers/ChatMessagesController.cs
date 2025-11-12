@@ -2,9 +2,9 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using SkinCareSystem.Common.Constants;
 using SkinCareSystem.Common.DTOs.Chat;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Services.Base;
@@ -63,14 +63,38 @@ namespace SkinCareSystem.APIService.Controllers
                 return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, Const.ERROR_INVALID_DATA_MSG));
             }
 
-            if (isSpecialist && !isAdmin)
+            if (sessionDto == null)
             {
+                return ToHttpResponse(new ServiceResult(Const.ERROR_EXCEPTION, "Unable to load session."));
+            }
+
+            if (string.Equals(sessionDto.State, ChatSessionStates.Closed, StringComparison.OrdinalIgnoreCase))
+            {
+                return ToHttpResponse(new ServiceResult(Const.WARNING_DATA_EXISTED_CODE, "Session is already closed."));
+            }
+
+            if (string.Equals(sessionDto.Channel, ChatSessionChannels.Specialist, StringComparison.OrdinalIgnoreCase))
+            {
+                var isOwner = sessionDto.UserId == requesterId;
+                var isAssignedSpecialist = sessionDto.SpecialistId.HasValue && sessionDto.SpecialistId == requesterId;
+                if (!isOwner && !isAssignedSpecialist)
+                {
+                    return ToHttpResponse(new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG));
+                }
+
                 dto.UserId = requesterId;
                 var specialistResult = await _chatMessageService.CreateMessageAsync(dto).ConfigureAwait(false);
                 return ToHttpResponse(specialistResult);
             }
 
-            dto.UserId = isAdmin ? sessionDto!.UserId : requesterId;
+            if (string.Equals(sessionDto.Channel, ChatSessionChannels.AiAdmin, StringComparison.OrdinalIgnoreCase) &&
+                !isAdmin &&
+                !isSpecialist)
+            {
+                return ToHttpResponse(new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG));
+            }
+
+            dto.UserId = sessionDto.UserId;
 
             var result = await _aiChatService.ChatInSessionAsync(dto).ConfigureAwait(false);
             return ToHttpResponse(result);
@@ -132,12 +156,40 @@ namespace SkinCareSystem.APIService.Controllers
                 return (error, null);
             }
 
-            if (!isAdmin && !isSpecialist && sessionDto.UserId != requesterId)
+            var isOwner = sessionDto.UserId == requesterId;
+            var isAssignedSpecialist = sessionDto.SpecialistId.HasValue && sessionDto.SpecialistId == requesterId;
+
+            if (string.Equals(sessionDto.Channel, ChatSessionChannels.Specialist, StringComparison.OrdinalIgnoreCase))
             {
+                if (isAdmin || (isSpecialist && isAssignedSpecialist) || isOwner)
+                {
+                    return (null, sessionDto);
+                }
+
                 return (new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG), null);
             }
 
-            return (null, sessionDto);
+            if (string.Equals(sessionDto.Channel, ChatSessionChannels.AiAdmin, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!isAdmin && !isSpecialist)
+                {
+                    return (new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG), null);
+                }
+
+                if (!isAdmin && !isOwner)
+                {
+                    return (new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG), null);
+                }
+
+                return (null, sessionDto);
+            }
+
+            if (isAdmin || isOwner)
+            {
+                return (null, sessionDto);
+            }
+
+            return (new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG), null);
         }
     }
 }

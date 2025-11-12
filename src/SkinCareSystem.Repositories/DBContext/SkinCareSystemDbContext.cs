@@ -171,7 +171,6 @@ public partial class SkinCareSystemDbContext : DbContext
 
             entity.HasOne(d => d.session).WithMany(p => p.ChatMessages)
                 .HasForeignKey(d => d.session_id)
-                .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("ChatMessages_session_id_fkey");
 
             entity.HasOne(d => d.user).WithMany(p => p.ChatMessages)
@@ -186,20 +185,41 @@ public partial class SkinCareSystemDbContext : DbContext
 
             entity.ToTable(tb => tb.HasComment("Phiên trò chuyện giữa người dùng và AI."));
 
+            entity.HasIndex(e => e.channel, "idx_chatsessions_channel");
+
+            entity.HasIndex(e => new { e.channel, e.state }, "idx_chatsessions_channel_state");
+
             entity.HasIndex(e => e.session_id, "idx_chatsessions_session_id");
 
+            entity.HasIndex(e => e.specialist_id, "idx_chatsessions_specialist_id");
+
+            entity.HasIndex(e => e.state, "idx_chatsessions_state");
+
             entity.HasIndex(e => e.user_id, "idx_chatsessions_user_id");
+
+            entity.HasIndex(e => e.created_at, "idx_cs_waiting_specialist").HasFilter("(((channel)::text = 'specialist'::text) AND ((state)::text = 'waiting_specialist'::text))");
 
             entity.Property(e => e.session_id)
                 .HasDefaultValueSql("uuid_generate_v4()")
                 .HasComment("Khóa chính phiên chat.");
+            entity.Property(e => e.assigned_at)
+                .HasComment("Thời điểm assign specialist (áp dụng cho channel=specialist).")
+                .HasColumnType("timestamp without time zone");
+            entity.Property(e => e.channel)
+                .HasDefaultValueSql("'ai'::character varying")
+                .HasComment("ai: user↔AI (templates-only); specialist: user↔specialist; ai_admin: admin/specialist↔AI (builder, có thể tạo routine mới).")
+                .HasColumnType("character varying");
+            entity.Property(e => e.closed_at)
+                .HasComment("Thời điểm đóng phiên (tuỳ workflow).")
+                .HasColumnType("timestamp without time zone");
             entity.Property(e => e.created_at)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasComment("Thời điểm tạo phiên.")
                 .HasColumnType("timestamp without time zone");
-            entity.Property(e => e.status)
-                .HasDefaultValueSql("'active'::character varying")
-                .HasComment("Trạng thái phiên chat.")
+            entity.Property(e => e.specialist_id).HasComment("User_id của specialist đang phụ trách phiên (NULL nếu chưa gán/không áp dụng).");
+            entity.Property(e => e.state)
+                .HasDefaultValueSql("'open'::character varying")
+                .HasComment("Trạng thái phiên chat:\n- open: Phiên đang mở (AI hoặc admin-special use-case), chưa cần specialist.\n- waiting_specialist: Phiên kênh specialist chưa có ai nhận (specialist_id IS NULL).\n- assigned: Phiên kênh specialist đã được gán cho 1 specialist (specialist_id NOT NULL), chưa đóng.\n- closed: Phiên đã đóng (closed_at NOT NULL).")
                 .HasColumnType("character varying");
             entity.Property(e => e.title)
                 .HasComment("Tiêu đề phiên chat.")
@@ -210,7 +230,12 @@ public partial class SkinCareSystemDbContext : DbContext
                 .HasColumnType("timestamp without time zone");
             entity.Property(e => e.user_id).HasComment("Chủ sở hữu phiên chat.");
 
-            entity.HasOne(d => d.user).WithMany(p => p.ChatSessions)
+            entity.HasOne(d => d.specialist).WithMany(p => p.ChatSessionspecialists)
+                .HasForeignKey(d => d.specialist_id)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_chatsessions_specialist");
+
+            entity.HasOne(d => d.user).WithMany(p => p.ChatSessionusers)
                 .HasForeignKey(d => d.user_id)
                 .HasConstraintName("ChatSessions_user_id_fkey");
         });

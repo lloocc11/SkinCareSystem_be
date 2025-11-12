@@ -66,7 +66,9 @@ public partial class User
 
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
 
-    public virtual ICollection<ChatSession> ChatSessions { get; set; } = new List<ChatSession>();
+    public virtual ICollection<ChatSession> ChatSessionspecialists { get; set; } = new List<ChatSession>();
+
+    public virtual ICollection<ChatSession> ChatSessionusers { get; set; } = new List<ChatSession>();
 
     public virtual ICollection<ConsentRecord> ConsentRecords { get; set; } = new List<ConsentRecord>();
 

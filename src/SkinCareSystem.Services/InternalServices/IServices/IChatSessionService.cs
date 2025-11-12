@@ -12,5 +12,9 @@ namespace SkinCareSystem.Services.InternalServices.IServices
         Task<IServiceResult> GetSessionsAsync(Guid? userId, int pageNumber, int pageSize);
         Task<IServiceResult> UpdateSessionAsync(Guid sessionId, ChatSessionUpdateDto dto);
         Task<IServiceResult> DeleteSessionAsync(Guid sessionId);
+        Task<IServiceResult> GetWaitingSpecialistSessionsAsync(int pageNumber, int pageSize);
+        Task<IServiceResult> GetAssignedSessionsAsync(Guid specialistId, int pageNumber, int pageSize);
+        Task<IServiceResult> AssignSessionAsync(Guid sessionId, Guid specialistId, bool allowOverride);
+        Task<IServiceResult> CloseSessionAsync(Guid sessionId, Guid requesterId, bool isAdmin, bool isSpecialist);
     }
 }

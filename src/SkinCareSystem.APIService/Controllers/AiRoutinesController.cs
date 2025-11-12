@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using SkinCareSystem.Common.DTOs.AI;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Services.Base;
+using SkinCareSystem.Services.ExternalServices.IServices;
 using SkinCareSystem.Services.InternalServices.IServices;
 
 namespace SkinCareSystem.APIService.Controllers;
@@ -20,72 +21,117 @@ namespace SkinCareSystem.APIService.Controllers;
 [Authorize(Roles = "admin,specialist")]
 public class AiRoutinesController : BaseApiController
 {
-    private readonly IRagRetriever _ragRetriever;
     private readonly IAiRoutineGeneratorService _aiRoutineGenerator;
     private readonly IRoutineDraftWriter _routineDraftWriter;
     private readonly IAiRoutineManagementService _routineManagementService;
     private readonly ITextExtractorService _textExtractorService;
+    private readonly ICloudinaryService _cloudinaryService;
     private readonly ILogger<AiRoutinesController> _logger;
 
     public AiRoutinesController(
-        IRagRetriever ragRetriever,
         IAiRoutineGeneratorService aiRoutineGenerator,
         IRoutineDraftWriter routineDraftWriter,
         IAiRoutineManagementService routineManagementService,
         ITextExtractorService textExtractorService,
+        ICloudinaryService cloudinaryService,
         ILogger<AiRoutinesController> logger)
     {
-        _ragRetriever = ragRetriever ?? throw new ArgumentNullException(nameof(ragRetriever));
         _aiRoutineGenerator = aiRoutineGenerator ?? throw new ArgumentNullException(nameof(aiRoutineGenerator));
         _routineDraftWriter = routineDraftWriter ?? throw new ArgumentNullException(nameof(routineDraftWriter));
         _routineManagementService = routineManagementService ?? throw new ArgumentNullException(nameof(routineManagementService));
         _textExtractorService = textExtractorService ?? throw new ArgumentNullException(nameof(textExtractorService));
+        _cloudinaryService = cloudinaryService ?? throw new ArgumentNullException(nameof(cloudinaryService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    [HttpPost("generate")]
-    public async Task<IActionResult> GenerateRoutine([FromBody] GenerateRoutineRequestDto request)
+    /// <summary>
+    /// Tạo routine AI từ yêu cầu JSON hoặc form-data (có thể kèm hình ảnh).
+    /// </summary>
+    [HttpPost("drafts")]
+    [Consumes("application/json", "multipart/form-data")]
+    [RequestSizeLimit(104_857_600)]
+    public async Task<IActionResult> GenerateRoutine(
+        [FromForm] GenerateRoutineFormRequestDto? formRequest,
+        [FromBody] GenerateRoutineRequestDto? jsonRequest)
     {
         if (!TryGetRequesterId(out var requesterId, out var unauthorizedResponse))
         {
             return unauthorizedResponse!;
         }
 
-        var result = await GenerateInternalAsync(requesterId, request, null).ConfigureAwait(false);
-        return ToHttpResponse(result);
-    }
-
-    [HttpPost("generate-from-docs")]
-    public async Task<IActionResult> GenerateRoutineFromDocs([FromBody] GenerateRoutineRequestDto request)
-    {
-        if (!TryGetRequesterId(out var requesterId, out var unauthorizedResponse))
+        if (Request.HasFormContentType)
         {
-            return unauthorizedResponse!;
+            var request = formRequest ?? new GenerateRoutineFormRequestDto();
+            var generationRequest = new GenerateRoutineRequestDto
+            {
+                Query = request.Query?.Trim() ?? string.Empty,
+                TargetSkinType = request.TargetSkinType,
+                TargetConditions = NormalizeConditions(request.TargetConditions),
+                MaxSteps = NormalizeMaxSteps(request.MaxSteps ?? 10),
+                NumVariants = NormalizeVariantCount(request.NumVariants ?? 1),
+                AutoSaveAsDraft = request.AutoSaveAsDraft ?? true
+            };
+
+            if (string.IsNullOrWhiteSpace(generationRequest.Query))
+            {
+                return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, "query is required."));
+            }
+
+            var imageUrls = new List<string>();
+            if (request.Images != null)
+            {
+                foreach (var image in request.Images.Where(img => img != null && img.Length > 0))
+                {
+                    if (!IsSupportedImage(image, out var extension))
+                    {
+                        return ToHttpResponse(new ServiceResult(Const.ERROR_INVALID_DATA_CODE,
+                            $"Image type '{extension}' is not supported. Use jpg/png/webp."));
+                    }
+
+                    try
+                    {
+                        var upload = await _cloudinaryService
+                            .UploadFileAsync(image, "skincare_system/ai-routines")
+                            .ConfigureAwait(false);
+
+                        var imageUrl = string.IsNullOrWhiteSpace(upload.SecureUrl) ? upload.Url : upload.SecureUrl;
+                        if (!string.IsNullOrWhiteSpace(imageUrl))
+                        {
+                            imageUrls.Add(imageUrl);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to upload routine image {FileName}", image.FileName);
+                        return ToHttpResponse(new ServiceResult(Const.ERROR_EXCEPTION, "Không thể upload hình ảnh, vui lòng thử lại."));
+                    }
+                }
+            }
+
+            generationRequest.ImageUrls = imageUrls;
+
+            var formResult = await GenerateRoutineAsync(requesterId, generationRequest).ConfigureAwait(false);
+            return ToHttpResponse(formResult);
         }
 
-        if (request.DocumentIds == null || request.DocumentIds.Count == 0)
+        if (jsonRequest == null)
         {
-            return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, "doc_ids must not be empty."));
+            return ToHttpResponse(new ServiceResult(Const.ERROR_INVALID_DATA_CODE, Const.ERROR_INVALID_DATA_MSG));
         }
 
-        var docFilter = request.DocumentIds
-            .Where(id => id != Guid.Empty)
-            .Distinct()
-            .ToArray();
+        jsonRequest.TargetConditions = NormalizeConditions(jsonRequest.TargetConditions);
+        jsonRequest.MaxSteps = NormalizeMaxSteps(jsonRequest.MaxSteps);
+        jsonRequest.NumVariants = NormalizeVariantCount(jsonRequest.NumVariants);
+        jsonRequest.ImageUrls ??= new List<string>();
 
-        if (docFilter.Length == 0)
-        {
-            return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, "doc_ids must contain valid values."));
-        }
-
-        var result = await GenerateInternalAsync(requesterId, request, docFilter).ConfigureAwait(false);
-        return ToHttpResponse(result);
+        var jsonResult = await GenerateRoutineAsync(requesterId, jsonRequest).ConfigureAwait(false);
+        return ToHttpResponse(jsonResult);
     }
 
     /// <summary>
     /// Tạo routine dựa trên nội dung file upload (không cần ingest trước).
     /// </summary>
-    [HttpPost("generate-from-upload")]
+    [HttpPost("drafts/documents")]
     [Authorize(Roles = "admin,specialist")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(104_857_600)]
@@ -157,7 +203,7 @@ public class AiRoutinesController : BaseApiController
         };
 
         var draft = await _aiRoutineGenerator
-            .GenerateAsync(baseRequest, Array.Empty<ChunkHit>())
+            .GenerateAsync(baseRequest)
             .ConfigureAwait(false);
 
         draft.IsRagBased = false;
@@ -183,7 +229,7 @@ public class AiRoutinesController : BaseApiController
         return ToHttpResponse(new ServiceResult(Const.SUCCESS_CREATE_CODE, "Generate routine from upload success", response));
     }
 
-    [HttpPost("generate-from-text")]
+    [HttpPost("drafts/text")]
     public async Task<IActionResult> GenerateRoutineFromText([FromBody] GenerateRoutineFromTextRequestDto request)
     {
         if (!TryGetRequesterId(out var requesterId, out var unauthorizedResponse))
@@ -205,11 +251,13 @@ public class AiRoutinesController : BaseApiController
             TargetSkinType = request.TargetSkinType,
             TargetConditions = normalizedConditions,
             AdditionalContext = request.Context?.Trim(),
-            AutoSaveAsDraft = request.AutoSaveAsDraft
+            AutoSaveAsDraft = request.AutoSaveAsDraft,
+            MaxSteps = 10,
+            NumVariants = 1
         };
 
         var draft = await _aiRoutineGenerator
-            .GenerateAsync(baseRequest, Array.Empty<ChunkHit>())
+            .GenerateAsync(baseRequest)
             .ConfigureAwait(false);
 
         draft.IsRagBased = false;
@@ -256,20 +304,25 @@ public class AiRoutinesController : BaseApiController
         return ToHttpResponse(result);
     }
 
-    private async Task<ServiceResult> GenerateInternalAsync(Guid requesterId, GenerateRoutineRequestDto request, Guid[]? restrictDocIds)
+    private async Task<ServiceResult> GenerateRoutineAsync(Guid requesterId, GenerateRoutineRequestDto request)
     {
         if (request == null || string.IsNullOrWhiteSpace(request.Query))
         {
             return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Query is required.");
         }
 
-        var hits = await _ragRetriever
-            .SearchAsync(request.Query, request.K, restrictDocIds, request.EmbeddingModel)
-            .ConfigureAwait(false);
+        request.Query = request.Query.Trim();
+        request.AdditionalContext = string.IsNullOrWhiteSpace(request.AdditionalContext)
+            ? null
+            : request.AdditionalContext.Trim();
+        request.TargetConditions = NormalizeConditions(request.TargetConditions);
+        request.MaxSteps = NormalizeMaxSteps(request.MaxSteps);
+        request.NumVariants = NormalizeVariantCount(request.NumVariants);
+        request.ImageUrls ??= new List<string>();
 
-        var draft = await _aiRoutineGenerator
-            .GenerateAsync(request, hits)
-            .ConfigureAwait(false);
+        var draft = await _aiRoutineGenerator.GenerateAsync(request).ConfigureAwait(false);
+        draft.IsRagBased = false;
+        draft.Source = "llm";
 
         Guid? routineId = null;
         if (request.AutoSaveAsDraft)
@@ -283,16 +336,9 @@ public class AiRoutinesController : BaseApiController
         {
             RoutineId = routineId,
             Routine = draft,
-            Citations = hits
-                .Select(hit => new RoutineCitationDto
-                {
-                    DocId = hit.DocId,
-                    ChunkId = hit.ChunkId,
-                    Score = hit.Score
-                })
-                .ToList(),
-            IsRagBased = hits.Count > 0,
-            Source = hits.Count > 0 ? "rag" : "llm"
+            Citations = new List<RoutineCitationDto>(),
+            IsRagBased = false,
+            Source = "llm"
         };
 
         return new ServiceResult(Const.SUCCESS_CREATE_CODE, Const.SUCCESS_CREATE_MSG, response);
@@ -353,5 +399,31 @@ public class AiRoutinesController : BaseApiController
         }
 
         return result;
+    }
+
+    private static int NormalizeMaxSteps(int? maxSteps)
+    {
+        if (!maxSteps.HasValue || maxSteps.Value <= 0)
+        {
+            return 10;
+        }
+
+        return Math.Min(maxSteps.Value, 20);
+    }
+
+    private static int NormalizeVariantCount(int? numVariants)
+    {
+        if (!numVariants.HasValue || numVariants.Value <= 0)
+        {
+            return 1;
+        }
+
+        return Math.Min(numVariants.Value, 3);
+    }
+
+    private static bool IsSupportedImage(IFormFile file, out string extension)
+    {
+        extension = Path.GetExtension(file.FileName)?.ToLowerInvariant() ?? string.Empty;
+        return extension is ".jpg" or ".jpeg" or ".png" or ".webp";
     }
 }

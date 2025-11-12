@@ -10,7 +10,15 @@ namespace SkinCareSystem.Common.DTOs.Chat
 
         public string? Title { get; set; }
 
-        public string Status { get; set; } = "active";
+        public string Channel { get; set; } = "ai";
+
+        public string State { get; set; } = "open";
+
+        public Guid? SpecialistId { get; set; }
+
+        public DateTime? AssignedAt { get; set; }
+
+        public DateTime? ClosedAt { get; set; }
 
         public DateTime CreatedAt { get; set; }
 

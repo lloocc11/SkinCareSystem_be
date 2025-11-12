@@ -11,7 +11,7 @@ namespace SkinCareSystem.Services.InternalServices.IServices
     public interface IAiChatService
     {
         /// <summary>
-        /// Processes a user message inside a chat session, invokes RAG + LLM, persists all artifacts and returns the chat turn.
+        /// Processes a user message inside a chat session, invokes the LLM with published routine templates, persists all artifacts and returns the chat turn.
         /// </summary>
         Task<ServiceResult> ChatInSessionAsync(ChatMessageCreateDto dto, CancellationToken cancellationToken = default);
     }
