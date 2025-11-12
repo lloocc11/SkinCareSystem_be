@@ -1,6 +1,6 @@
 -- ============================================================
 -- SkinCareSystem.sql
--- PostgreSQL schema for Skin Care System (RAG-enabled)
+-- PostgreSQL schema for Skin Care System (LLM templates; RAG tables kept but unused)
 -- All DDL/DML statements are idempotent; safe to rerun.
 -- ============================================================
 
@@ -90,7 +90,6 @@ CREATE TABLE "Users" (
    OR ("auth_provider" = 'local'  AND "password_hash" IS NOT NULL)
   )
 );
-
 
 CREATE TABLE "UserAnswers" (
   "answer_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -192,11 +191,11 @@ CREATE TABLE "Routines" (
   "analysis_id" uuid, -- nếu routine được AI gợi ý từ 1 phân tích cụ thể
   "description" text,
 
-  -- Thêm thông tin để RAG routine theo loại da / tình trạng
+  -- Thêm thông tin để lọc routine theo loại da / tình trạng
   "target_skin_type" varchar,           -- ví dụ: oily, dry, sensitive
   "target_conditions" text,            -- ví dụ: "acne, redness"
 
-  -- Phân biệt routine template vs routine cá nhân hoá (nếu sau này cần)
+  -- Phân biệt routine template vs routine cá nhân hoá
   "routine_type" varchar NOT NULL DEFAULT 'template'
       CHECK ("routine_type" IN ('template', 'personalized')),
 
@@ -213,7 +212,6 @@ CREATE TABLE "Routines" (
   FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE,
   FOREIGN KEY ("parent_routine_id") REFERENCES "Routines" ("routine_id") ON DELETE SET NULL
 );
-
 
 CREATE TABLE "RoutineSteps" (
   "step_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -245,11 +243,11 @@ CREATE TABLE "RoutineInstances" (
   "start_date" date NOT NULL,
   "end_date" date,
 
-  -- Thêm nhiều trạng thái hơn cho flow thực tế
+  -- Trạng thái thực thi routine
   "status" varchar NOT NULL
       CHECK ("status" IN ('planned', 'active', 'paused', 'completed', 'cancelled')),
 
-  -- Tuỳ chọn: đánh giá tổng quan adherence
+  -- Tuỳ chọn: điểm tuân thủ
   "adherence_score" numeric(5,2),  -- 0–100 (%), có thể null
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
 
@@ -257,76 +255,38 @@ CREATE TABLE "RoutineInstances" (
   FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE
 );
 
-
-CREATE TABLE "RoutineProgress" (
-  "progress_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "instance_id" uuid NOT NULL,
-  "step_id" uuid NOT NULL,
-  "completed_at" timestamp NOT NULL,
-  "photo_url" varchar,
-  "note" text,
-  "status" varchar NOT NULL DEFAULT 'completed'
-      CHECK ("status" IN ('completed', 'skipped', 'missed', 'pending')),
-  "irritation_level" int CHECK ("irritation_level" BETWEEN 1 AND 5), -- da có kích ứng không
-  "mood_note" varchar, -- user cảm nhận chung
-  FOREIGN KEY ("instance_id") REFERENCES "RoutineInstances" ("instance_id") ON DELETE CASCADE,
-  FOREIGN KEY ("step_id") REFERENCES "RoutineSteps" ("step_id") ON DELETE CASCADE
-);
-
-CREATE TABLE "Symptoms" (
-  "symptom_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "name" varchar UNIQUE NOT NULL,
-  "description" text,
-  "example_image_url" varchar,
-  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE "Questions" (
-  "question_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "text" varchar NOT NULL,
-  "type" varchar NOT NULL CHECK (type IN ('choice', 'multi-choice', 'text')),
-  "options" jsonb,
-  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE "Rules" (
-  "rule_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "recommendation" text NOT NULL,
-  "urgency_level" varchar NOT NULL CHECK (urgency_level IN ('normal', 'caution', 'urgent')),
-  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE "RuleConditions" (
-  "rule_condition_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "rule_id" uuid NOT NULL,
-  "symptom_id" uuid,
-  "question_id" uuid,
-  "operator" varchar NOT NULL CHECK (operator IN ('=', '>', '<', 'IN', 'NOT IN')),
-  "value" text,
-  FOREIGN KEY ("rule_id") REFERENCES "Rules" ("rule_id") ON DELETE CASCADE,
-  FOREIGN KEY ("symptom_id") REFERENCES "Symptoms" ("symptom_id") ON DELETE CASCADE,
-  FOREIGN KEY ("question_id") REFERENCES "Questions" ("question_id") ON DELETE CASCADE,
-  CHECK (symptom_id IS NOT NULL OR question_id IS NOT NULL)
-);
-
-CREATE TABLE "ConsentRecords" (
-  "consent_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "user_id" uuid NOT NULL,
-  "consent_type" varchar NOT NULL,
-  "consent_text" text NOT NULL,
-  "given" boolean NOT NULL,
-  "given_at" timestamp DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE
-);
-
+-- ==================== UPDATED: Chat sessions (no status) ====================
 CREATE TABLE "ChatSessions" (
   "session_id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "user_id" uuid NOT NULL,
+  "user_id" uuid NOT NULL,               -- chủ sở hữu phiên (end-user)
   "title" varchar,
-  "status" varchar DEFAULT 'active',
+
+  -- Kênh phiên:
+  --   ai         : user ↔ AI (gợi ý dựa trên routine templates đã publish)
+  --   ai_admin   : admin/specialist ↔ AI (dành cho tạo routine template, LLM-only)
+  --   specialist : user ↔ specialist (chat hai chiều, KHÔNG gọi AI)
+  "channel" varchar NOT NULL
+      CHECK ("channel" IN ('ai','ai_admin','specialist'))
+      DEFAULT 'ai',
+
+  -- Trạng thái:
+  --   open               : phiên đang mở (AI channels)
+  --   waiting_specialist : phiên specialist chưa được claim
+  --   assigned           : đã có specialist nhận phiên
+  --   closed             : đã đóng
+  "state" varchar NOT NULL
+      CHECK ("state" IN ('open','waiting_specialist','assigned','closed'))
+      DEFAULT 'open',
+
+  "specialist_id" uuid,                  -- null nếu chưa gán
+  "assigned_at" timestamp,
+  "closed_at"   timestamp,
+
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE
+
+  FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE,
+  FOREIGN KEY ("specialist_id") REFERENCES "Users" ("user_id") ON DELETE SET NULL
 );
 
 CREATE TABLE "ChatMessages" (
@@ -339,15 +299,11 @@ CREATE TABLE "ChatMessages" (
   "content" text,
   "image_url" varchar,
   "message_type" varchar NOT NULL CHECK (message_type IN ('text', 'image', 'mixed')),
-
-  -- BỎ cột role, không cần nữa
-  -- "role" varchar NOT NULL CHECK (role IN ('user', 'assistant')),
-
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+
   FOREIGN KEY ("session_id") REFERENCES "ChatSessions" ("session_id") ON DELETE CASCADE,
   FOREIGN KEY ("user_id") REFERENCES "Users" ("user_id") ON DELETE CASCADE
 );
-
 
 -- ------------------------------------------------------------
 -- Deferred foreign keys
@@ -468,12 +424,17 @@ CREATE INDEX IF NOT EXISTS "idx_ruleconditions_question_id" ON "RuleConditions" 
 CREATE INDEX IF NOT EXISTS "idx_consentrecords_consent_id" ON "ConsentRecords" USING BTREE ("consent_id");
 CREATE INDEX IF NOT EXISTS "idx_consentrecords_user_id" ON "ConsentRecords" USING BTREE ("user_id");
 
+-- ChatSessions indexes (updated)
 CREATE INDEX IF NOT EXISTS "idx_chatsessions_session_id" ON "ChatSessions" USING BTREE ("session_id");
-CREATE INDEX IF NOT EXISTS "idx_chatsessions_user_id" ON "ChatSessions" USING BTREE ("user_id");
+CREATE INDEX IF NOT EXISTS "idx_chatsessions_user_id"    ON "ChatSessions" USING BTREE ("user_id");
+CREATE INDEX IF NOT EXISTS "idx_chatsessions_channel"    ON "ChatSessions" USING BTREE ("channel");
+CREATE INDEX IF NOT EXISTS "idx_chatsessions_state"      ON "ChatSessions" USING BTREE ("state");
+CREATE INDEX IF NOT EXISTS "idx_chatsessions_specialist" ON "ChatSessions" USING BTREE ("specialist_id");
+CREATE INDEX IF NOT EXISTS "idx_chatsessions_assignedat" ON "ChatSessions" USING BTREE ("assigned_at");
 
 CREATE INDEX IF NOT EXISTS "idx_chatmessages_message_id" ON "ChatMessages" USING BTREE ("message_id");
 CREATE INDEX IF NOT EXISTS "idx_chatmessages_session_id" ON "ChatMessages" USING BTREE ("session_id");
-CREATE INDEX IF NOT EXISTS "idx_chatmessages_user_id" ON "ChatMessages" USING BTREE ("user_id");
+CREATE INDEX IF NOT EXISTS "idx_chatmessages_user_id"    ON "ChatMessages" USING BTREE ("user_id");
 
 -- ------------------------------------------------------------
 -- Triggers (idempotent)
@@ -557,7 +518,7 @@ COMMENT ON COLUMN "AIAnalysis"."confidence" IS 'Độ tin cậy của phân tíc
 COMMENT ON COLUMN "AIAnalysis"."created_at" IS 'Thời điểm tạo phân tích.';
 COMMENT ON COLUMN "AIAnalysis"."updated_at" IS 'Thời điểm cập nhật phân tích.';
 
-COMMENT ON TABLE "MedicalDocuments" IS 'Tài liệu tri thức y khoa phục vụ RAG.';
+COMMENT ON TABLE "MedicalDocuments" IS 'Tài liệu tri thức y khoa. (Giữ schema; ingest RAG đã tắt ở API).';
 COMMENT ON COLUMN "MedicalDocuments"."doc_id" IS 'Khóa chính tài liệu.';
 COMMENT ON COLUMN "MedicalDocuments"."title" IS 'Tiêu đề tài liệu.';
 COMMENT ON COLUMN "MedicalDocuments"."content" IS 'Nội dung tài liệu.';
@@ -566,19 +527,19 @@ COMMENT ON COLUMN "MedicalDocuments"."status" IS 'Trạng thái hiển thị tà
 COMMENT ON COLUMN "MedicalDocuments"."last_updated" IS 'Thời điểm cập nhật nội dung gần nhất.';
 COMMENT ON COLUMN "MedicalDocuments"."created_at" IS 'Thời điểm tạo tài liệu.';
 
-COMMENT ON TABLE "MedicalDocumentAssets" IS 'Tập hợp ảnh/tệp đính kèm cho tài liệu y khoa.';
+COMMENT ON TABLE "MedicalDocumentAssets" IS 'Ảnh/tệp đính kèm cho tài liệu y khoa (ingest RAG đã tắt).';
 COMMENT ON COLUMN "MedicalDocumentAssets"."asset_id" IS 'Khóa chính bản ghi tài nguyên.';
 COMMENT ON COLUMN "MedicalDocumentAssets"."doc_id" IS 'Tài liệu y khoa sở hữu ảnh.';
 COMMENT ON COLUMN "MedicalDocumentAssets"."file_url" IS 'URL công khai của ảnh/tệp.';
 COMMENT ON COLUMN "MedicalDocumentAssets"."public_id" IS 'Public ID từ Cloudinary (hoặc provider).';
-COMMENT ON COLUMN "MedicalDocumentAssets"."provider" IS 'Tên nhà cung cấp lưu trữ (mặc định Cloudinary).';
+COMMENT ON COLUMN "MedicalDocumentAssets"."provider" IS 'Nhà cung cấp lưu trữ (mặc định Cloudinary).';
 COMMENT ON COLUMN "MedicalDocumentAssets"."mime_type" IS 'Loại MIME của tài nguyên.';
 COMMENT ON COLUMN "MedicalDocumentAssets"."size_bytes" IS 'Dung lượng tệp (byte).';
 COMMENT ON COLUMN "MedicalDocumentAssets"."width" IS 'Chiều rộng ảnh (pixel).';
 COMMENT ON COLUMN "MedicalDocumentAssets"."height" IS 'Chiều cao ảnh (pixel).';
 COMMENT ON COLUMN "MedicalDocumentAssets"."created_at" IS 'Thời điểm lưu tài nguyên.';
 
-COMMENT ON TABLE "DocumentChunks" IS 'Các đoạn văn bản đã chia nhỏ từ tài liệu.';
+COMMENT ON TABLE "DocumentChunks" IS 'Các đoạn văn bản đã chia nhỏ từ tài liệu (RAG tạm dừng sử dụng).';
 COMMENT ON COLUMN "DocumentChunks"."chunk_id" IS 'Khóa chính đoạn văn.';
 COMMENT ON COLUMN "DocumentChunks"."doc_id" IS 'Tài liệu gốc chứa đoạn văn.';
 COMMENT ON COLUMN "DocumentChunks"."chunk_text" IS 'Nội dung đoạn.';
@@ -606,14 +567,14 @@ COMMENT ON COLUMN "AIResponses"."response_text" IS 'Nội dung phản hồi.';
 COMMENT ON COLUMN "AIResponses"."response_type" IS 'Loại phản hồi (recommendation/explanation/disclaimer).';
 COMMENT ON COLUMN "AIResponses"."created_at" IS 'Thời điểm tạo phản hồi.';
 
-COMMENT ON TABLE "Routines" IS 'Liệu trình chăm sóc da do AI đề xuất.';
+COMMENT ON TABLE "Routines" IS 'Liệu trình chăm sóc da (template/personalized).';
 COMMENT ON COLUMN "Routines"."routine_id" IS 'Khóa chính liệu trình.';
-COMMENT ON COLUMN "Routines"."user_id" IS 'Người dùng sở hữu liệu trình.';
-COMMENT ON COLUMN "Routines"."analysis_id" IS 'Phân tích AI liên quan.';
+COMMENT ON COLUMN "Routines"."user_id" IS 'Người tạo liệu trình (admin/specialist).';
+COMMENT ON COLUMN "Routines"."analysis_id" IS 'Phân tích AI liên quan (nếu có).';
 COMMENT ON COLUMN "Routines"."description" IS 'Mô tả chung liệu trình.';
 COMMENT ON COLUMN "Routines"."version" IS 'Phiên bản liệu trình.';
 COMMENT ON COLUMN "Routines"."parent_routine_id" IS 'Liệu trình cha (nếu có).';
-COMMENT ON COLUMN "Routines"."status" IS 'Trạng thái liệu trình.';
+COMMENT ON COLUMN "Routines"."status" IS 'draft/published/archived.';
 COMMENT ON COLUMN "Routines"."created_at" IS 'Thời điểm tạo liệu trình.';
 COMMENT ON COLUMN "Routines"."updated_at" IS 'Thời điểm cập nhật liệu trình.';
 
@@ -640,7 +601,7 @@ COMMENT ON COLUMN "RoutineInstances"."routine_id" IS 'Liệu trình triển khai
 COMMENT ON COLUMN "RoutineInstances"."user_id" IS 'Người dùng áp dụng.';
 COMMENT ON COLUMN "RoutineInstances"."start_date" IS 'Ngày bắt đầu.';
 COMMENT ON COLUMN "RoutineInstances"."end_date" IS 'Ngày kết thúc (nếu có).';
-COMMENT ON COLUMN "RoutineInstances"."status" IS 'Trạng thái thực hiện.';
+COMMENT ON COLUMN "RoutineInstances"."status" IS 'planned/active/paused/completed/cancelled.';
 COMMENT ON COLUMN "RoutineInstances"."created_at" IS 'Thời điểm tạo instance.';
 
 COMMENT ON TABLE "RoutineProgress" IS 'Tiến độ thực hiện từng bước.';
@@ -650,7 +611,7 @@ COMMENT ON COLUMN "RoutineProgress"."step_id" IS 'Bước được ghi nhận.';
 COMMENT ON COLUMN "RoutineProgress"."completed_at" IS 'Thời điểm hoàn tất.';
 COMMENT ON COLUMN "RoutineProgress"."photo_url" IS 'Ảnh minh chứng (nếu có).';
 COMMENT ON COLUMN "RoutineProgress"."note" IS 'Ghi chú thêm.';
-COMMENT ON COLUMN "RoutineProgress"."status" IS 'Trạng thái tiến độ.';
+COMMENT ON COLUMN "RoutineProgress"."status" IS 'completed/skipped/missed/pending.';
 
 COMMENT ON TABLE "Symptoms" IS 'Danh sách triệu chứng da liễu.';
 COMMENT ON COLUMN "Symptoms"."symptom_id" IS 'Khóa chính triệu chứng.';
@@ -662,14 +623,14 @@ COMMENT ON COLUMN "Symptoms"."created_at" IS 'Thời điểm tạo triệu chứ
 COMMENT ON TABLE "Questions" IS 'Các câu hỏi khảo sát người dùng.';
 COMMENT ON COLUMN "Questions"."question_id" IS 'Khóa chính câu hỏi.';
 COMMENT ON COLUMN "Questions"."text" IS 'Nội dung câu hỏi.';
-COMMENT ON COLUMN "Questions"."type" IS 'Loại câu hỏi (choice/multi-choice/text).';
+COMMENT ON COLUMN "Questions"."type" IS 'choice/multi-choice/text.';
 COMMENT ON COLUMN "Questions"."options" IS 'Danh sách lựa chọn (JSON).';
 COMMENT ON COLUMN "Questions"."created_at" IS 'Thời điểm tạo câu hỏi.';
 
 COMMENT ON TABLE "Rules" IS 'Tập luật gợi ý/skincare.';
 COMMENT ON COLUMN "Rules"."rule_id" IS 'Khóa chính luật.';
 COMMENT ON COLUMN "Rules"."recommendation" IS 'Khuyến nghị tương ứng.';
-COMMENT ON COLUMN "Rules"."urgency_level" IS 'Mức độ khẩn cấp của luật.';
+COMMENT ON COLUMN "Rules"."urgency_level" IS 'normal/caution/urgent.';
 COMMENT ON COLUMN "Rules"."created_at" IS 'Thời điểm tạo luật.';
 
 COMMENT ON TABLE "RuleConditions" IS 'Điều kiện áp dụng cho mỗi luật.';
@@ -677,7 +638,7 @@ COMMENT ON COLUMN "RuleConditions"."rule_condition_id" IS 'Khóa chính điều 
 COMMENT ON COLUMN "RuleConditions"."rule_id" IS 'Luật được áp dụng.';
 COMMENT ON COLUMN "RuleConditions"."symptom_id" IS 'Triệu chứng điều kiện.';
 COMMENT ON COLUMN "RuleConditions"."question_id" IS 'Câu hỏi điều kiện.';
-COMMENT ON COLUMN "RuleConditions"."operator" IS 'Toán tử so sánh.';
+COMMENT ON COLUMN "RuleConditions"."operator" IS '=, >, <, IN, NOT IN.';
 COMMENT ON COLUMN "RuleConditions"."value" IS 'Giá trị so sánh.';
 
 COMMENT ON TABLE "ConsentRecords" IS 'Bản ghi đồng ý của người dùng.';
@@ -688,21 +649,25 @@ COMMENT ON COLUMN "ConsentRecords"."consent_text" IS 'Nội dung đồng ý.';
 COMMENT ON COLUMN "ConsentRecords"."given" IS 'Trạng thái đồng ý.';
 COMMENT ON COLUMN "ConsentRecords"."given_at" IS 'Thời điểm xác nhận.';
 
-COMMENT ON TABLE "ChatSessions" IS 'Phiên trò chuyện giữa người dùng và AI.';
+COMMENT ON TABLE "ChatSessions" IS 'Phiên trò chuyện: ai/ai_admin/specialist. Không còn cột status.';
 COMMENT ON COLUMN "ChatSessions"."session_id" IS 'Khóa chính phiên chat.';
-COMMENT ON COLUMN "ChatSessions"."user_id" IS 'Chủ sở hữu phiên chat.';
+COMMENT ON COLUMN "ChatSessions"."user_id" IS 'Chủ sở hữu phiên (end-user).';
 COMMENT ON COLUMN "ChatSessions"."title" IS 'Tiêu đề phiên chat.';
-COMMENT ON COLUMN "ChatSessions"."status" IS 'Trạng thái phiên chat.';
+COMMENT ON COLUMN "ChatSessions"."channel" IS 'ai | ai_admin | specialist.';
+COMMENT ON COLUMN "ChatSessions"."state" IS 'open | waiting_specialist | assigned | closed.';
+COMMENT ON COLUMN "ChatSessions"."specialist_id" IS 'Specialist được gán (nếu có).';
+COMMENT ON COLUMN "ChatSessions"."assigned_at" IS 'Thời điểm specialist claim.';
+COMMENT ON COLUMN "ChatSessions"."closed_at" IS 'Thời điểm đóng phiên.';
 COMMENT ON COLUMN "ChatSessions"."created_at" IS 'Thời điểm tạo phiên.';
 COMMENT ON COLUMN "ChatSessions"."updated_at" IS 'Thời điểm cập nhật phiên.';
 
 COMMENT ON TABLE "ChatMessages" IS 'Tin nhắn trong phiên trò chuyện.';
 COMMENT ON COLUMN "ChatMessages"."message_id" IS 'Khóa chính tin nhắn.';
 COMMENT ON COLUMN "ChatMessages"."session_id" IS 'Phiên chat chứa tin nhắn.';
-COMMENT ON COLUMN "ChatMessages"."user_id" IS 'Người gửi (user hoặc bot).';
+COMMENT ON COLUMN "ChatMessages"."user_id" IS 'Người gửi (NULL nếu AI).';
 COMMENT ON COLUMN "ChatMessages"."content" IS 'Nội dung văn bản.';
 COMMENT ON COLUMN "ChatMessages"."image_url" IS 'URL ảnh đính kèm (nếu có).';
-COMMENT ON COLUMN "ChatMessages"."message_type" IS 'Loại tin nhắn (text/image/mixed).';
+COMMENT ON COLUMN "ChatMessages"."message_type" IS 'text/image/mixed.';
 COMMENT ON COLUMN "ChatMessages"."created_at" IS 'Thời điểm gửi tin nhắn.';
 
 -- ------------------------------------------------------------

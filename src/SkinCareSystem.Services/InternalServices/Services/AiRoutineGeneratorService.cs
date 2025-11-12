@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -14,6 +13,8 @@ namespace SkinCareSystem.Services.InternalServices.Services;
 
 public class AiRoutineGeneratorService : IAiRoutineGeneratorService
 {
+    private const string SystemPrompt = "Bạn là chuyên gia da liễu. Sử dụng kiến thức y khoa công khai và mô tả (bao gồm ảnh) do người dùng cung cấp để đề xuất routine hợp lý. Luôn thêm khuyến cáo đây không thay thế tư vấn bác sĩ.";
+
     private const string Schema = """
     {
       "type": "object",
@@ -52,28 +53,23 @@ public class AiRoutineGeneratorService : IAiRoutineGeneratorService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<RoutineDraftDto> GenerateAsync(GenerateRoutineRequestDto request, IReadOnlyList<ChunkHit> hits)
+    public async Task<RoutineDraftDto> GenerateAsync(GenerateRoutineRequestDto request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var useRag = hits is { Count: > 0 };
-        var systemPrompt = useRag
-            ? "Bạn là chuyên gia da liễu. Chỉ sử dụng thông tin trong các đoạn tri thức được cung cấp. Nếu thiếu dữ liệu thì bù bằng kiến thức y khoa chung và luôn thêm lưu ý/disclaimer."
-            : "Bạn là chuyên gia da liễu. Không có tri thức nội bộ, hãy dựa vào kiến thức y khoa chung và thêm disclaimer rõ ràng rằng đây không thay thế tư vấn bác sĩ.";
-
-        var userPrompt = BuildUserPrompt(request, hits, useRag);
+        var userPrompt = BuildUserPrompt(request);
 
         string raw;
         try
         {
             raw = await _llmClient
-                .ChatJsonAsync(systemPrompt, userPrompt, Schema)
+                .ChatJsonAsync(SystemPrompt, userPrompt, Schema)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "LLM routine generation failed. Falling back to template.");
-            return BuildFallbackRoutine(request, useRag);
+            return BuildFallbackRoutine(request);
         }
 
         try
@@ -91,8 +87,8 @@ public class AiRoutineGeneratorService : IAiRoutineGeneratorService
                     : request.TargetSkinType,
                 TargetConditions = ExtractConditions(root, request),
                 Steps = ExtractSteps(root),
-                IsRagBased = useRag,
-                Source = useRag ? "rag" : "llm"
+                IsRagBased = false,
+                Source = "llm"
             };
 
             if (draft.Steps.Count == 0)
@@ -105,11 +101,11 @@ public class AiRoutineGeneratorService : IAiRoutineGeneratorService
         catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Unable to parse LLM response. Falling back to template.");
-            return BuildFallbackRoutine(request, useRag);
+            return BuildFallbackRoutine(request);
         }
     }
 
-    private static string BuildUserPrompt(GenerateRoutineRequestDto request, IReadOnlyList<ChunkHit> hits, bool useRag)
+    private static string BuildUserPrompt(GenerateRoutineRequestDto request)
     {
         var builder = new StringBuilder();
         builder.AppendLine("Yêu cầu tạo routine chăm sóc da với các ràng buộc sau:");
@@ -129,24 +125,14 @@ public class AiRoutineGeneratorService : IAiRoutineGeneratorService
         builder.AppendLine($"- Số routine cần tạo: {Math.Max(1, request.NumVariants)} (nhưng chỉ trả về routine tốt nhất).");
         builder.AppendLine("- Đảm bảo có cảnh báo/disclaimer rõ ràng ở cuối mô tả.");
 
-        if (useRag)
+        if (request.ImageUrls is { Count: > 0 })
         {
             builder.AppendLine();
-            builder.AppendLine("Các đoạn tri thức liên quan:");
-            foreach (var hit in hits)
+            builder.AppendLine("Ảnh người dùng cung cấp (tham khảo đường dẫn, không mô tả chi tiết da liễu nếu không chắc chắn):");
+            foreach (var url in request.ImageUrls.Take(5))
             {
-                var content = hit.Content.Length > 500
-                    ? hit.Content[..500] + "..."
-                    : hit.Content;
-                builder.AppendLine($"[Doc:{hit.DocId} | Score:{hit.Score.ToString("F2", CultureInfo.InvariantCulture)}]");
-                builder.AppendLine(content);
-                builder.AppendLine();
+                builder.AppendLine($"- {url}");
             }
-        }
-        else
-        {
-            builder.AppendLine();
-            builder.AppendLine("Không có tri thức nội bộ nào phù hợp. Hãy dùng kiến thức tổng quát nhưng ghi rõ đây chỉ là gợi ý.");
         }
 
         if (!string.IsNullOrWhiteSpace(request.AdditionalContext))
@@ -241,7 +227,7 @@ public class AiRoutineGeneratorService : IAiRoutineGeneratorService
             .ToList();
     }
 
-    private static RoutineDraftDto BuildFallbackRoutine(GenerateRoutineRequestDto request, bool useRag)
+    private static RoutineDraftDto BuildFallbackRoutine(GenerateRoutineRequestDto request)
     {
         return new RoutineDraftDto
         {
@@ -249,8 +235,8 @@ public class AiRoutineGeneratorService : IAiRoutineGeneratorService
             TargetSkinType = request.TargetSkinType,
             TargetConditions = request.TargetConditions ?? new List<string>(),
             Steps = new List<RoutineStepDraftDto> { CreateDefaultStep() },
-            IsRagBased = useRag,
-            Source = useRag ? "rag" : "llm"
+            IsRagBased = false,
+            Source = "llm"
         };
     }
 

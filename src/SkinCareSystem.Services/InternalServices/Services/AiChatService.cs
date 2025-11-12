@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SkinCareSystem.Common.Constants;
 using SkinCareSystem.Common.DTOs.Chat;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
 using SkinCareSystem.Common.Utils;
@@ -28,15 +29,12 @@ using SkinCareSystem.Services.Rag;
 namespace SkinCareSystem.Services.InternalServices.Services
 {
     /// <summary>
-    /// Provides realtime AI chat inside an existing chat session using RAG + OpenAI.
+    /// Provides realtime AI chat inside an existing chat session powered by OpenAI (templates-only).
     /// </summary>
     public class AiChatService : IAiChatService
     {
-        private const int ContextCharacterLimit = 3500;
-        private static readonly string[] DefaultSourceFilter = { "guideline:vn-2024", "faq" };
-
         private const string SystemPrompt = """
-Bạn là chuyên gia da liễu nói tiếng Việt. Luôn dựa trên tri thức RAG và danh sách routine template được cung cấp ở cuối bản nhắc.
+Bạn là chuyên gia da liễu nói tiếng Việt. Luôn dựa trên kiến thức y khoa công khai và danh sách routine template đã publish được cung cấp ở cuối bản nhắc (không sử dụng tài liệu nội bộ).
 
 Nhiệm vụ:
 1. Tóm tắt tình trạng da trong 2-3 câu dễ hiểu.
@@ -87,7 +85,6 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
 """;
 
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IRagSearchService _ragSearchService;
         private readonly ILlmClient _llmClient;
         private readonly ICloudinaryService? _cloudinaryService;
         private readonly IRoutineRecommendationService _routineRecommendationService;
@@ -96,7 +93,6 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
 
         public AiChatService(
             IUnitOfWork unitOfWork,
-            IRagSearchService ragSearchService,
             ILlmClient llmClient,
             IRoutineRecommendationService routineRecommendationService,
             ILogger<AiChatService> logger,
@@ -104,7 +100,6 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
             ICloudinaryService? cloudinaryService = null)
         {
             _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-            _ragSearchService = ragSearchService ?? throw new ArgumentNullException(nameof(ragSearchService));
             _llmClient = llmClient ?? throw new ArgumentNullException(nameof(llmClient));
             _routineRecommendationService = routineRecommendationService ?? throw new ArgumentNullException(nameof(routineRecommendationService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -133,6 +128,17 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
             if (session == null)
             {
                 return new ServiceResult(Const.WARNING_NO_DATA_CODE, "Chat session not found.");
+            }
+
+            if (!string.Equals(session.channel, ChatSessionChannels.Ai, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(session.channel, ChatSessionChannels.AiAdmin, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceResult(Const.ERROR_INVALID_DATA_CODE, "AI chat is not available for this channel.");
+            }
+
+            if (string.Equals(session.state, ChatSessionStates.Closed, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceResult(Const.WARNING_DATA_EXISTED_CODE, "Session is already closed.");
             }
 
             if (!dto.UserId.HasValue)
@@ -173,13 +179,6 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
                 var userMessageEntity = dto.ToEntity(messageType, timestamp);
                 await _unitOfWork.ChatMessageRepository.CreateAsync(userMessageEntity).ConfigureAwait(false);
 
-                var contextItems = await _ragSearchService.SearchAsync(
-                        hasText ? normalizedContent : "Phân tích ảnh người dùng cung cấp",
-                        topK: 6,
-                        sourceFilter: DefaultSourceFilter,
-                        ct: cancellationToken)
-                    .ConfigureAwait(false);
-
                 var routineCandidates = await _routineRecommendationService
                     .RecommendAsync(
                         hasText ? normalizedContent : "Phân tích ảnh người dùng cung cấp",
@@ -188,12 +187,9 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
                         cancellationToken)
                     .ConfigureAwait(false);
 
-                var contextText = BuildContext(contextItems);
                 var prompt = BuildUserPrompt(
                     normalizedContent,
                     uploadedImageUrl,
-                    contextText,
-                    contextItems,
                     routineCandidates);
 
                 string llmResponseJson;
@@ -308,63 +304,9 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
 
             return $"/uploads/chat-images/{fileName}";
         }
-
-        private static string BuildContext(IReadOnlyList<RagItem> items)
-        {
-            if (items.Count == 0)
-            {
-                return "Không tìm thấy tri thức phù hợp.";
-            }
-
-            var builder = new StringBuilder();
-            for (var index = 0; index < items.Count; index++)
-            {
-                var item = items[index];
-                var entry = new StringBuilder();
-                entry.AppendLine($"[{index + 1}] Nguồn: {item.Source ?? "không rõ"}");
-                if (!string.IsNullOrWhiteSpace(item.Title))
-                {
-                    entry.AppendLine($"Tiêu đề: {item.Title}");
-                }
-
-                entry.AppendLine("Nội dung:");
-                entry.AppendLine(item.Content.Trim());
-
-                if (item.AssetUrls is { Count: > 0 })
-                {
-                    entry.AppendLine("Hình ảnh tham khảo:");
-                    foreach (var url in item.AssetUrls.Take(3))
-                    {
-                        entry.AppendLine($"- {url}");
-                    }
-                }
-
-                entry.AppendLine("---");
-
-                var entryText = entry.ToString();
-                if (builder.Length + entryText.Length > ContextCharacterLimit)
-                {
-                    var remaining = ContextCharacterLimit - builder.Length;
-                    if (remaining <= 0)
-                    {
-                        break;
-                    }
-
-                    builder.Append(entryText.AsSpan(0, Math.Min(entryText.Length, remaining)));
-                    break;
-                }
-
-                builder.Append(entryText);
-            }
-
-            return builder.ToString();
-        }
-
         private static string BuildUserPrompt(
             string content,
             string? imageUrl,
-            string context,
-            IReadOnlyList<RagItem> items,
             IReadOnlyList<RoutineRecommendation> routineCandidates)
         {
             var builder = new StringBuilder();
@@ -385,23 +327,8 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
                 builder.AppendLine($"Ảnh người dùng cung cấp: {imageUrl}");
             }
 
-            var assetUrls = items
-                .SelectMany(i => i.AssetUrls ?? Array.Empty<string>())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            if (assetUrls.Length > 0)
-            {
-                builder.AppendLine("Hình ảnh tham khảo kèm theo tri thức:");
-                foreach (var url in assetUrls.Take(5))
-                {
-                    builder.AppendLine($"- {url}");
-                }
-            }
-
             builder.AppendLine();
-            builder.AppendLine("Tri thức liên quan:");
-            builder.AppendLine(context);
+            builder.AppendLine("Chỉ sử dụng kiến thức da liễu công khai và danh sách routine template đã publish dưới đây để đưa ra khuyến nghị.");
             builder.AppendLine();
             builder.AppendLine(BuildRoutineCandidateSection(routineCandidates));
             builder.AppendLine("Hãy phản hồi bằng JSON hợp lệ theo schema yêu cầu.");

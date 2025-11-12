@@ -67,14 +67,7 @@ builder.Services.AddScoped<IUserSymptomService, UserSymptomService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IUserAnswerService, UserAnswerService>();
 
-// Medical Document Services
-builder.Services.AddScoped<IMedicalDocumentService, MedicalDocumentService>();
-builder.Services.AddScoped<IDocumentChunkService, DocumentChunkService>();
-builder.Services.AddScoped<IMedicalDocumentAssetService, MedicalDocumentAssetService>();
 builder.Services.AddScoped<ITextExtractorService, TextExtractorService>();
-builder.Services.AddScoped<IEmbeddingService, EmbeddingService>();
-builder.Services.AddScoped<IDocumentIngestService, DocumentIngestService>();
-builder.Services.AddScoped<IRagRetriever, RagRetriever>();
 builder.Services.AddScoped<IAiRoutineGeneratorService, AiRoutineGeneratorService>();
 builder.Services.AddScoped<IRoutineDraftWriter, RoutineDraftWriter>();
 builder.Services.AddScoped<IAiRoutineManagementService, AiRoutineManagementService>();

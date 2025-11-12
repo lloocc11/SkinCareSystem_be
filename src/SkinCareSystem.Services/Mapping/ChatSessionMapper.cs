@@ -1,4 +1,5 @@
 using System;
+using SkinCareSystem.Common.Constants;
 using SkinCareSystem.Common.DTOs.Chat;
 using SkinCareSystem.Common.Utils;
 using SkinCareSystem.Repositories.Models;
@@ -16,7 +17,11 @@ namespace SkinCareSystem.Services.Mapping
                 SessionId = session.session_id,
                 UserId = session.user_id,
                 Title = session.title,
-                Status = "active",
+                Channel = session.channel,
+                State = session.state,
+                SpecialistId = session.specialist_id,
+                AssignedAt = session.assigned_at.HasValue ? DateTimeHelper.EnsureUtc(session.assigned_at) : null,
+                ClosedAt = session.closed_at.HasValue ? DateTimeHelper.EnsureUtc(session.closed_at) : null,
                 CreatedAt = DateTimeHelper.EnsureUtc(session.created_at),
                 UpdatedAt = session.updated_at.HasValue ? DateTimeHelper.EnsureUtc(session.updated_at) : null
             };
@@ -27,12 +32,23 @@ namespace SkinCareSystem.Services.Mapping
             if (dto == null) throw new ArgumentNullException(nameof(dto));
 
             var timestamp = DateTimeHelper.UtcNowUnspecified();
+            var channel = ChatSessionChannels.TryNormalize(dto.Channel, out var normalized)
+                ? normalized
+                : ChatSessionChannels.Ai;
+            var state = channel == ChatSessionChannels.Specialist
+                ? ChatSessionStates.WaitingSpecialist
+                : ChatSessionStates.Open;
 
             return new ChatSession
             {
                 session_id = Guid.NewGuid(),
                 user_id = dto.UserId,
                 title = dto.Title,
+                channel = channel,
+                state = state,
+                specialist_id = null,
+                assigned_at = null,
+                closed_at = null,
                 created_at = timestamp,
                 updated_at = timestamp
             };

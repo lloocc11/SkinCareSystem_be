@@ -6,5 +6,5 @@ namespace SkinCareSystem.Services.InternalServices.IServices;
 
 public interface IAiRoutineGeneratorService
 {
-    Task<RoutineDraftDto> GenerateAsync(GenerateRoutineRequestDto request, IReadOnlyList<ChunkHit> hits);
+    Task<RoutineDraftDto> GenerateAsync(GenerateRoutineRequestDto request);
 }

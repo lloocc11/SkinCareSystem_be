@@ -35,6 +35,12 @@ Riêng upload file (chat image, medical document) dùng `multipart/form-data`.
   - `admin`: quản trị cao nhất.
   - `specialist`: chuyên viên, có thể tạo routine template, chat với user.
   - `user`: người dùng cuối.
+- `ChatSessions` (model chung cho mọi kênh chat) hiển thị thêm các trường mới:
+  - `channel`: `ai` (user ↔ AI), `ai_admin` (admin/specialist ↔ AI builder), `specialist` (user ↔ specialist).
+  - `state`: `open`, `waiting_specialist`, `assigned`, `closed`.
+  - `specialistId`, `assignedAt`, `closedAt`: dùng cho channel `specialist`.
+  - Tạo session: `ai`/`ai_admin` → `state=open`; `specialist` → `state=waiting_specialist`. Đóng phiên ghi `closedAt` + `state=closed`.
+  - Các endpoint chuyên biệt cho specialist nằm ở mục **5**.
 
 ---
 
@@ -130,13 +136,15 @@ Riêng upload file (chat image, medical document) dùng `multipart/form-data`.
 - **PUT** `/api/routine-steps/{id}`
 - **DELETE** `/api/routine-steps/{id}`
 
-### 2.3 Upload tài liệu y khoa (cho RAG)
-- **POST** `/api/ingest/documents` (admin,specialist, multipart)
-  - Trường form: `title`, `source`, `status`, `files[]`.
-  - Backend upload Cloudinary, trích xuất text (txt/md/csv, pdf/docx TODO) → ghi vào `MedicalDocuments`.
-- **POST** `/api/ingest/documents/{docId}/embed`
-  - Body `{ "chunkSize": 1000, "chunkOverlap": 150, "embeddingModel": "text-embedding-3-small" }`.
-  - Xóa chunk cũ và chunk lại, lưu vector `Pgvector`.
+### 2.3 (Deprecated) ingest tài liệu RAG
+
+Tất cả endpoint liên quan đến `MedicalDocuments`, `DocumentChunks`, `MedicalDocumentAssets` nay đã tắt và trả **410 Gone**:
+
+- `POST /api/ingest/documents`
+- `POST /api/ingest/documents/{docId}/embed`
+- `GET /api/documents/*`, `GET /api/document-chunks/*`, `POST /api/documents/{docId}/assets`, ...
+
+Lý do: AI routine builder đã chuyển sang thuần LLM + image context, không còn truy vấn vector trên DocumentChunks. FE không cần hiển thị UI ingest nữa; nếu gọi nhầm endpoint cũ, hãy hiển thị thông báo “Tính năng RAG đã bị vô hiệu hóa, vui lòng dùng LLM routine builder mới”.
 
 ---
 
@@ -212,145 +220,103 @@ Riêng upload file (chat image, medical document) dùng `multipart/form-data`.
 
 ## 5. Flow chat user ↔ specialist
 
-- `ChatSessions` dùng chung cho chat AI và chat với specialist. `ChatSessions.user_id` luôn là user sở hữu.
-- `ChatMessages`:
-  - User: `user_id = userId`.
-  - Specialist: `user_id = specialistId` (gửi cùng endpoint `/messages`).
-  - AI: `user_id = null`.
-- Hiện chưa có endpoint riêng để quản lý phiên chat của specialist. FE có thể dựa vào các endpoint chung (list session, load messages).
+Các phiên `channel = "specialist"` dùng chung `ChatSessions`, nhưng có thêm guard và endpoint riêng:
 
-### Endpoint còn thiếu (đề xuất)
-1. `GET /api/chat/sessions/assigned` – trả danh sách session đang thuộc specialist hoặc cần xử lý.
-2. `POST /api/chat/sessions/{sessionId}/assign` – gán specialist cho session.
-3. `GET /api/chat/sessions/metrics` – thống kê số session chờ, unread, v.v.
+- User owner luôn đọc/ghi được (trừ khi phiên đã `closed`).
+- Specialist phải claim (assign) trước khi trả lời.
+- AI không tham gia, tất cả tin nhắn lưu với `ChatMessages.user_id = callerId`.
 
-Các endpoint này **chưa tồn tại**, cần ghi chú “TODO” nếu FE cần.
+### 5.1 Danh sách phiên dành cho specialist
+- **GET** `/api/chat/specialist-sessions?state=waiting_specialist&pageNumber=&pageSize=`
+- **Auth**: `admin` hoặc `specialist`.
+- Response: `PagedResult<ChatSessionDto>` gồm các trường `channel`, `state`, `specialistId`, `assignedAt`, `closedAt`. Nếu không có dữ liệu → 404.
+- Hỗ trợ `state=assigned` kèm `mine=true` để lấy các phiên đã gán cho chính chuyên viên đang đăng nhập.
+
+### 5.2 Claim/assign session
+- **POST** `/api/chat/sessions/{sessionId}/assignments`
+- **Auth**: `admin` hoặc `specialist`.
+- Không có body, backend tự dùng `callerId`.
+- Điều kiện:
+  - Session phải `channel='specialist'`.
+  - `state='waiting_specialist'`. Nếu đã có `specialistId` khác → HTTP 409. Admin có thể override (gán lại).
+- Thành công → trả `ChatSessionDto` với `state='assigned'`, `specialistId=callerId`, `assignedAt` UTC.
+
+### 5.3 Gửi tin nhắn
+- Dùng endpoint chung `POST /api/chat/sessions/{sessionId}/messages` (multipart).
+- User owner và specialist được assign đều có thể gửi. Admin chỉ đọc được log.
+- Nếu `state='closed'` → HTTP 409. Nếu chưa assign, chỉ user được gửi (specialist chưa claim sẽ bị 403).
+- Payload/response giống mục 3.2 nhưng **không** có `ChatTurnResponseDto` – backend trả `ServiceResult` của `ChatMessageDto`.
+
+### 5.4 Đóng phiên
+- **POST** `/api/chat/sessions/{sessionId}/closures`
+- **Auth**: admin, user owner, hoặc specialist được gán.
+- Điều kiện:
+  - Không thể đóng khi còn `state='waiting_specialist'`.
+  - Nếu đã `closed` → HTTP 409.
+- Thành công: cập nhật `state='closed'`, `closedAt=now`.
 
 ---
 
 ## 6. Flow AI tạo Routine Template (Admin/Specialist)
 
-Các endpoint dưới đây đã implement. RAG fallback: nếu không có DocumentChunks hoặc không match, hệ thống vẫn trả routine bằng LLM, `citations = []`, `source = "llm"`.
+AI builder hiện thuần LLM + ảnh, không còn đọc DocumentChunks. Mọi response đều `isRagBased=false`, `citations=[]`, `source` = `llm` (hoặc `llm_upload`, `llm_text` tùy endpoint). Các endpoint ingest tài liệu cũ trả 410 như đã nêu ở mục 2.3.
 
-### 6.1 Generate routine từ mô tả chung
-- **POST** `/api/ai/routines/generate`
+### 6.1 Tạo routine draft từ mô tả + ảnh (khuyến nghị)
+- **POST** `/api/ai/routines/drafts`
 - **Auth**: `admin` hoặc `specialist`
-- **Body**
-```json
-{
-  "query": "Routine trị mụn viêm cho da dầu",
-  "targetSkinType": "oily",
-  "targetConditions": ["acne","inflammation"],
-  "k": 12,
-  "maxSteps": 10,
-  "numVariants": 1,
-  "autoSaveAsDraft": true,
-  "embeddingModel": "text-embedding-3-small"
-}
+- **Cách 1 – multipart (ưu tiên)**
+  - Fields: `query` (bắt buộc), `targetSkinType`, `targetConditions[]`, `maxSteps` (<=20), `numVariants` (<=3), `autoSaveAsDraft` (default true), `images[]` (jpg/png/webp, optional).
+- **Cách 2 – JSON**
+  - Cùng schema, thay `images[]` bằng `imageUrls[]` (URL Cloudinary đã có).
+- **Ví dụ multipart**
+```bash
+curl -X POST http://localhost:5000/api/ai/routines/drafts \
+  -H "Authorization: Bearer <token>" \
+  -F "query=Routine trị mụn viêm" \
+  -F "targetSkinType=oily" \
+  -F "targetConditions=acne" \
+  -F "images=@/path/to/acne.jpg"
 ```
-- **Response**
-```json
-{
-  "success": true,
-  "data": {
-    "routineId": "uuid hoặc null nếu không lưu",
-    "isRagBased": true,
-    "source": "rag",
-    "routine": {
-      "description": "... kèm disclaimer ...",
-      "targetSkinType": "oily",
-      "targetConditions": ["acne","inflammation"],
-      "steps": [
-        { "order": 1, "instruction": "...", "timeOfDay": "evening", "frequency": "daily" }
-      ],
-      "isRagBased": true,
-      "source": "rag"
-    },
-    "citations": [
-      { "docId": "uuid", "chunkId": "uuid", "score": 0.82 }
-    ]
-  },
-  "message": "Save data success"
-}
-```
-(Nếu không có RAG → `isRagBased=false`, `source="llm"`, `citations=[]`)
-
-### 6.2 Generate routine từ tài liệu cụ thể
-- **POST** `/api/ai/routines/generate-from-docs`
-- **Body**
-```json
-{
-  "query": "Routine làm dịu kích ứng sau tretinoin",
-  "docIds": ["uuid1","uuid2"],
-  "targetSkinType": "sensitive",
-  "targetConditions": ["irritation"],
-  "k": 20,
-  "autoSaveAsDraft": true
-}
-```
-- Backend chỉ RAG trong danh sách doc_ids; nếu chưa embed → fallback LLM-only.
-- Response giống 6.1.
-
-### 6.3 Generate routine từ file upload
-- **POST** `/api/ai/routines/generate-from-upload`
-- **Auth**: `admin,specialist`
-- **Content-Type**: `multipart/form-data`
-- **Form fields**
-  - `files[]` (bắt buộc, 1..n): hỗ trợ `.txt, .md, .pdf, .doc, .docx, .csv, .tsv`.
-  - `query` (optional string)
-  - `targetSkinType` (optional string)
-  - `targetConditions` (optional, gửi nhiều field `targetConditions=acne` hoặc chuỗi `acne,redness`)
-  - `autoSaveAsDraft` (bool, default true)
-- **Behavior**:
-  - Backend trích xuất text từ file (txt đọc trực tiếp; pdf/docx nếu chưa hỗ trợ sẽ trả lỗi 400).
-  - Gọi LLM với `AdditionalContext` là nội dung file, không phụ thuộc RAG.
-  - Nếu `autoSaveAsDraft == true`, ghi routine_type=`template`, status=`draft`, user_id = caller.
 - **Response**
 ```json
 {
   "success": true,
   "data": {
     "routineId": "uuid-or-null",
+    "source": "llm",
     "isRagBased": false,
-    "source": "llm_upload",
+    "citations": [],
     "routine": {
-      "description": "...",
+      "description": "... (có disclaimer)...",
       "targetSkinType": "oily",
       "targetConditions": ["acne"],
       "steps": [
-        { "order": 1, "instruction": "...", "timeOfDay": "evening", "frequency": "daily" }
+        { "order": 1, "instruction": "...", "timeOfDay": "morning", "frequency": "daily" }
       ],
-      "isRagBased": false,
-      "source": "llm_upload"
-    },
-    "citations": []
-  },
-  "message": "Generate routine from upload success"
+      "source": "llm",
+      "isRagBased": false
+    }
+  }
 }
 ```
+- Nếu `autoSaveAsDraft=true`, backend lưu `routine_type='template'`, `status='draft'`, owner = caller.
+
+### 6.2 Generate routine từ file upload (LLM-only)
+- **POST** `/api/ai/routines/drafts/documents` (multipart)
+- Field bắt buộc: `files[]`. Backend trích xuất text rồi gọi LLM.
+- Response tương tự 6.1 nhưng `source="llm_upload"`.
+
+### 6.3 Generate routine từ text (chat)
+- **POST** `/api/ai/routines/drafts/text`
+- Body: `{ "prompt": "...", "context": "...", "targetSkinType": "...", "targetConditions": [], "autoSaveAsDraft": true }`
+- Response `source="llm_text"`.
 
 ### 6.4 Publish / update / archive draft
-- **PUT** `/api/ai/routines/{routineId}` – `AiRoutineUpdateRequestDto` (ghi đè mô tả + toàn bộ steps).
+- **PUT** `/api/ai/routines/{routineId}`
 - **POST** `/api/ai/routines/{routineId}/publish`
 - **POST** `/api/ai/routines/{routineId}/archive`
 
-### 6.5 Generate routine từ text (chat)
-- **POST** `/api/ai/routines/generate-from-text`
-- **Auth**: `admin,specialist`
-- **Body**
-```json
-{
-  "prompt": "Mô tả nhu cầu routine (chuyển từ chat)",
-  "context": "Nếu có, copy toàn bộ nội dung chat/note muốn AI đọc.",
-  "targetSkinType": "dry",
-  "targetConditions": ["eczema"],
-  "autoSaveAsDraft": true
-}
-```
-- **Behavior**:
-  - Không dùng RAG; LLM chỉ dựa vào `prompt` và `context`.
-  - Nếu `autoSaveAsDraft=true`, lưu routine_type=`template`, status=`draft`, user_id=caller.
-- **Response**: giống các endpoint generate khác nhưng `source = "llm_text"` và `citations = []`.
+> Lưu ý: mọi trường `citations` giờ luôn rỗng; FE không cần hiển thị liên kết tài liệu nữa.
 
 ---
 

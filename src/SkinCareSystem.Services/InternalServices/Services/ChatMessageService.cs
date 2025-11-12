@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
+using SkinCareSystem.Common.Constants;
 using SkinCareSystem.Common.DTOs.Chat;
 using SkinCareSystem.Common.DTOs.Pagination;
 using SkinCareSystem.Common.Enum.ServiceResultEnums;
@@ -42,6 +43,16 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Session not found");
             }
 
+            if (!string.Equals(session.channel, ChatSessionChannels.Specialist, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Direct messages are only allowed for specialist channel sessions.");
+            }
+
+            if (string.Equals(session.state, ChatSessionStates.Closed, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceResult(Const.WARNING_DATA_EXISTED_CODE, "Session is already closed.");
+            }
+
             if (!dto.UserId.HasValue)
             {
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "UserId is required for chat messages");
@@ -51,6 +62,13 @@ namespace SkinCareSystem.Services.InternalServices.Services
             if (user == null)
             {
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "User not found");
+            }
+
+            var isOwner = session.user_id == dto.UserId.Value;
+            var isAssignedSpecialist = session.specialist_id.HasValue && session.specialist_id == dto.UserId.Value;
+            if (!isOwner && !isAssignedSpecialist)
+            {
+                return new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG);
             }
 
             var imageUrl = dto.ImageUrl;
@@ -93,10 +111,27 @@ namespace SkinCareSystem.Services.InternalServices.Services
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Session not found");
             }
 
+            if (!string.Equals(session.channel, ChatSessionChannels.Specialist, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceResult(Const.ERROR_VALIDATION_CODE, "Direct uploads are only available in specialist sessions.");
+            }
+
+            if (string.Equals(session.state, ChatSessionStates.Closed, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceResult(Const.WARNING_DATA_EXISTED_CODE, "Session is already closed.");
+            }
+
             var user = await _unitOfWork.UserRepository.GetByIdAsync(userId);
             if (user == null)
             {
                 return new ServiceResult(Const.ERROR_VALIDATION_CODE, "User not found");
+            }
+
+            var isOwner = session.user_id == userId;
+            var isAssignedSpecialist = session.specialist_id.HasValue && session.specialist_id == userId;
+            if (!isOwner && !isAssignedSpecialist)
+            {
+                return new ServiceResult(Const.FORBIDDEN_ACCESS_CODE, Const.FORBIDDEN_ACCESS_MSG);
             }
 
             var typeValue = string.IsNullOrWhiteSpace(messageType) ? "image" : messageType.ToLowerInvariant();
