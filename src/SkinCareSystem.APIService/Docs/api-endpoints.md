@@ -264,10 +264,8 @@ AI builder hiện thuần LLM + ảnh, không còn đọc DocumentChunks. Mọi 
 ### 6.1 Tạo routine draft từ mô tả + ảnh (khuyến nghị)
 - **POST** `/api/ai/routines/drafts`
 - **Auth**: `admin` hoặc `specialist`
-- **Cách 1 – multipart (ưu tiên)**
-  - Fields: `query` (bắt buộc), `targetSkinType`, `targetConditions[]`, `maxSteps` (<=20), `numVariants` (<=3), `autoSaveAsDraft` (default true), `images[]` (jpg/png/webp, optional).
-- **Cách 2 – JSON**
-  - Cùng schema, thay `images[]` bằng `imageUrls[]` (URL Cloudinary đã có).
+- **Content-Type**: `multipart/form-data`
+  - Fields: `query` (bắt buộc), `targetSkinType`, `targetConditions[]`, `maxSteps` (<=20), `numVariants` (<=3), `autoSaveAsDraft` (default true), `images[]` (jpg/png/webp, optional). Backend tự upload ảnh lên Cloudinary.
 - **Ví dụ multipart**
 ```bash
 curl -X POST http://localhost:5000/api/ai/routines/drafts \
@@ -308,7 +306,7 @@ curl -X POST http://localhost:5000/api/ai/routines/drafts \
 
 ### 6.3 Generate routine từ text (chat)
 - **POST** `/api/ai/routines/drafts/text`
-- Body: `{ "prompt": "...", "context": "...", "targetSkinType": "...", "targetConditions": [], "autoSaveAsDraft": true }`
+- **Content-Type**: `multipart/form-data` (gửi `prompt`, `context`, … và `images[]` nếu có ảnh) hoặc JSON (khi chỉ gửi text, không đính kèm ảnh).
 - Response `source="llm_text"`.
 
 ### 6.4 Publish / update / archive draft
