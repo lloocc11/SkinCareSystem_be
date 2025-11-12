@@ -63,7 +63,6 @@ public class LocalAuthService : ILocalAuthService
             auth_provider = "local",
             google_id = null,
             role_id = defaultRole.role_id,
-            role = defaultRole,
             skin_type = request.SkinType,
             date_of_birth = request.DateOfBirth,
             status = "active",
