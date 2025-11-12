@@ -48,83 +48,63 @@ public class AiRoutinesController : BaseApiController
     /// Tạo routine AI từ yêu cầu JSON hoặc form-data (có thể kèm hình ảnh).
     /// </summary>
     [HttpPost("drafts")]
-    [Consumes("application/json", "multipart/form-data")]
+    [Consumes("multipart/form-data")]
     [RequestSizeLimit(104_857_600)]
-    public async Task<IActionResult> GenerateRoutine(
-        [FromForm] GenerateRoutineFormRequestDto? formRequest,
-        [FromBody] GenerateRoutineRequestDto? jsonRequest)
+    public async Task<IActionResult> GenerateRoutineFromForm([FromForm] GenerateRoutineFormRequestDto request)
     {
         if (!TryGetRequesterId(out var requesterId, out var unauthorizedResponse))
         {
             return unauthorizedResponse!;
         }
 
-        if (Request.HasFormContentType)
+        var generationRequest = new GenerateRoutineRequestDto
         {
-            var request = formRequest ?? new GenerateRoutineFormRequestDto();
-            var generationRequest = new GenerateRoutineRequestDto
-            {
-                Query = request.Query?.Trim() ?? string.Empty,
-                TargetSkinType = request.TargetSkinType,
-                TargetConditions = NormalizeConditions(request.TargetConditions),
-                MaxSteps = NormalizeMaxSteps(request.MaxSteps ?? 10),
-                NumVariants = NormalizeVariantCount(request.NumVariants ?? 1),
-                AutoSaveAsDraft = request.AutoSaveAsDraft ?? true
-            };
+            Query = request.Query?.Trim() ?? string.Empty,
+            TargetSkinType = request.TargetSkinType,
+            TargetConditions = NormalizeConditions(request.TargetConditions),
+            MaxSteps = NormalizeMaxSteps(request.MaxSteps ?? 10),
+            NumVariants = NormalizeVariantCount(request.NumVariants ?? 1),
+            AutoSaveAsDraft = request.AutoSaveAsDraft ?? true
+        };
 
-            if (string.IsNullOrWhiteSpace(generationRequest.Query))
-            {
-                return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, "query is required."));
-            }
-
-            var imageUrls = new List<string>();
-            if (request.Images != null)
-            {
-                foreach (var image in request.Images.Where(img => img != null && img.Length > 0))
-                {
-                    if (!IsSupportedImage(image, out var extension))
-                    {
-                        return ToHttpResponse(new ServiceResult(Const.ERROR_INVALID_DATA_CODE,
-                            $"Image type '{extension}' is not supported. Use jpg/png/webp."));
-                    }
-
-                    try
-                    {
-                        var upload = await _cloudinaryService
-                            .UploadFileAsync(image, "skincare_system/ai-routines")
-                            .ConfigureAwait(false);
-
-                        var imageUrl = string.IsNullOrWhiteSpace(upload.SecureUrl) ? upload.Url : upload.SecureUrl;
-                        if (!string.IsNullOrWhiteSpace(imageUrl))
-                        {
-                            imageUrls.Add(imageUrl);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to upload routine image {FileName}", image.FileName);
-                        return ToHttpResponse(new ServiceResult(Const.ERROR_EXCEPTION, "Không thể upload hình ảnh, vui lòng thử lại."));
-                    }
-                }
-            }
-
-            generationRequest.ImageUrls = imageUrls;
-
-            var formResult = await GenerateRoutineAsync(requesterId, generationRequest).ConfigureAwait(false);
-            return ToHttpResponse(formResult);
+        if (string.IsNullOrWhiteSpace(generationRequest.Query))
+        {
+            return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, "query is required."));
         }
 
-        if (jsonRequest == null)
+        var (imageError, uploadedImages) = await UploadImagesAsync(request.Images).ConfigureAwait(false);
+        if (imageError != null)
+        {
+            return ToHttpResponse(imageError);
+        }
+
+        generationRequest.ImageUrls = uploadedImages;
+
+        var formResult = await GenerateRoutineAsync(requesterId, generationRequest).ConfigureAwait(false);
+        return ToHttpResponse(formResult);
+    }
+
+    [HttpPost("drafts")]
+    [Consumes("application/json")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<IActionResult> GenerateRoutineFromJson([FromBody] GenerateRoutineRequestDto request)
+    {
+        if (!TryGetRequesterId(out var requesterId, out var unauthorizedResponse))
+        {
+            return unauthorizedResponse!;
+        }
+
+        if (request == null)
         {
             return ToHttpResponse(new ServiceResult(Const.ERROR_INVALID_DATA_CODE, Const.ERROR_INVALID_DATA_MSG));
         }
 
-        jsonRequest.TargetConditions = NormalizeConditions(jsonRequest.TargetConditions);
-        jsonRequest.MaxSteps = NormalizeMaxSteps(jsonRequest.MaxSteps);
-        jsonRequest.NumVariants = NormalizeVariantCount(jsonRequest.NumVariants);
-        jsonRequest.ImageUrls ??= new List<string>();
+        request.TargetConditions = NormalizeConditions(request.TargetConditions);
+        request.MaxSteps = NormalizeMaxSteps(request.MaxSteps);
+        request.NumVariants = NormalizeVariantCount(request.NumVariants);
+        request.ImageUrls ??= new List<string>();
 
-        var jsonResult = await GenerateRoutineAsync(requesterId, jsonRequest).ConfigureAwait(false);
+        var jsonResult = await GenerateRoutineAsync(requesterId, request).ConfigureAwait(false);
         return ToHttpResponse(jsonResult);
     }
 
@@ -230,7 +210,9 @@ public class AiRoutinesController : BaseApiController
     }
 
     [HttpPost("drafts/text")]
-    public async Task<IActionResult> GenerateRoutineFromText([FromBody] GenerateRoutineFromTextRequestDto request)
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(104_857_600)]
+    public async Task<IActionResult> GenerateRoutineFromText([FromForm] GenerateRoutineFromTextFormRequestDto request)
     {
         if (!TryGetRequesterId(out var requesterId, out var unauthorizedResponse))
         {
@@ -243,6 +225,47 @@ public class AiRoutinesController : BaseApiController
         }
 
         var normalizedConditions = NormalizeConditions(request.TargetConditions);
+        var (imageError, uploadedImages) = await UploadImagesAsync(request.Images).ConfigureAwait(false);
+        if (imageError != null)
+        {
+            return ToHttpResponse(imageError);
+        }
+
+        var baseRequest = new GenerateRoutineRequestDto
+        {
+            Query = string.IsNullOrWhiteSpace(request.Prompt)
+                ? "Routine được tạo từ văn bản người dùng cung cấp"
+                : request.Prompt.Trim(),
+            TargetSkinType = request.TargetSkinType,
+            TargetConditions = normalizedConditions,
+            AdditionalContext = request.Context?.Trim(),
+            AutoSaveAsDraft = request.AutoSaveAsDraft ?? true,
+            MaxSteps = 10,
+            NumVariants = 1,
+            ImageUrls = uploadedImages
+        };
+
+        return await GenerateRoutineFromTextInternalAsync(baseRequest, requesterId, request.TargetSkinType, normalizedConditions)
+            .ConfigureAwait(false);
+    }
+
+    [HttpPost("drafts/text")]
+    [Consumes("application/json")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<IActionResult> GenerateRoutineFromTextJson([FromBody] GenerateRoutineFromTextRequestDto request)
+    {
+        if (!TryGetRequesterId(out var requesterId, out var unauthorizedResponse))
+        {
+            return unauthorizedResponse!;
+        }
+
+        if (request == null || (string.IsNullOrWhiteSpace(request.Prompt) && string.IsNullOrWhiteSpace(request.Context)))
+        {
+            return ToHttpResponse(new ServiceResult(Const.ERROR_VALIDATION_CODE, "Prompt hoặc context là bắt buộc."));
+        }
+
+        var normalizedConditions = NormalizeConditions(request.TargetConditions);
+
         var baseRequest = new GenerateRoutineRequestDto
         {
             Query = string.IsNullOrWhiteSpace(request.Prompt)
@@ -253,34 +276,12 @@ public class AiRoutinesController : BaseApiController
             AdditionalContext = request.Context?.Trim(),
             AutoSaveAsDraft = request.AutoSaveAsDraft,
             MaxSteps = 10,
-            NumVariants = 1
+            NumVariants = 1,
+            ImageUrls = new List<string>()
         };
 
-        var draft = await _aiRoutineGenerator
-            .GenerateAsync(baseRequest)
+        return await GenerateRoutineFromTextInternalAsync(baseRequest, requesterId, request.TargetSkinType, normalizedConditions)
             .ConfigureAwait(false);
-
-        draft.IsRagBased = false;
-        draft.Source = "llm_text";
-
-        Guid? routineId = null;
-        if (request.AutoSaveAsDraft)
-        {
-            routineId = await _routineDraftWriter
-                .SaveDraftAsync(draft, requesterId, request.TargetSkinType, normalizedConditions)
-                .ConfigureAwait(false);
-        }
-
-        var response = new GenerateRoutineResponseDto
-        {
-            RoutineId = routineId,
-            Routine = draft,
-            Citations = new List<RoutineCitationDto>(),
-            IsRagBased = false,
-            Source = "llm_text"
-        };
-
-        return ToHttpResponse(new ServiceResult(Const.SUCCESS_CREATE_CODE, "Generate routine from text success", response));
     }
 
     [HttpPost("{routineId:guid}/publish")]
@@ -302,6 +303,39 @@ public class AiRoutinesController : BaseApiController
     {
         var result = await _routineManagementService.UpdateAsync(routineId, request).ConfigureAwait(false);
         return ToHttpResponse(result);
+    }
+
+    private async Task<IActionResult> GenerateRoutineFromTextInternalAsync(
+        GenerateRoutineRequestDto baseRequest,
+        Guid requesterId,
+        string? targetSkinType,
+        List<string> normalizedConditions)
+    {
+        var draft = await _aiRoutineGenerator
+            .GenerateAsync(baseRequest)
+            .ConfigureAwait(false);
+
+        draft.IsRagBased = false;
+        draft.Source = "llm_text";
+
+        Guid? routineId = null;
+        if (baseRequest.AutoSaveAsDraft)
+        {
+            routineId = await _routineDraftWriter
+                .SaveDraftAsync(draft, requesterId, targetSkinType, normalizedConditions)
+                .ConfigureAwait(false);
+        }
+
+        var response = new GenerateRoutineResponseDto
+        {
+            RoutineId = routineId,
+            Routine = draft,
+            Citations = new List<RoutineCitationDto>(),
+            IsRagBased = false,
+            Source = "llm_text"
+        };
+
+        return ToHttpResponse(new ServiceResult(Const.SUCCESS_CREATE_CODE, "Generate routine from text success", response));
     }
 
     private async Task<ServiceResult> GenerateRoutineAsync(Guid requesterId, GenerateRoutineRequestDto request)
@@ -425,5 +459,43 @@ public class AiRoutinesController : BaseApiController
     {
         extension = Path.GetExtension(file.FileName)?.ToLowerInvariant() ?? string.Empty;
         return extension is ".jpg" or ".jpeg" or ".png" or ".webp";
+    }
+
+    private async Task<(ServiceResult? Error, List<string> Urls)> UploadImagesAsync(IEnumerable<IFormFile>? images)
+    {
+        var urls = new List<string>();
+        if (images == null)
+        {
+            return (null, urls);
+        }
+
+        foreach (var image in images.Where(img => img != null && img.Length > 0))
+        {
+            if (!IsSupportedImage(image, out var extension))
+            {
+                return (new ServiceResult(Const.ERROR_INVALID_DATA_CODE,
+                    $"Image type '{extension}' is not supported. Use jpg/png/webp."), urls);
+            }
+
+            try
+            {
+                var upload = await _cloudinaryService
+                    .UploadFileAsync(image, "skincare_system/ai-routines")
+                    .ConfigureAwait(false);
+
+                var imageUrl = string.IsNullOrWhiteSpace(upload.SecureUrl) ? upload.Url : upload.SecureUrl;
+                if (!string.IsNullOrWhiteSpace(imageUrl))
+                {
+                    urls.Add(imageUrl);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to upload routine image {FileName}", image.FileName);
+                return (new ServiceResult(Const.ERROR_EXCEPTION, "Không thể upload hình ảnh, vui lòng thử lại."), urls);
+            }
+        }
+
+        return (null, urls);
     }
 }
