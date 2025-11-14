@@ -169,58 +169,73 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
             var hasText = !string.IsNullOrWhiteSpace(normalizedContent);
             var hasImage = !string.IsNullOrWhiteSpace(uploadedImageUrl);
             var messageType = DetermineMessageType(hasText, hasImage);
+            var userTimestamp = DateTimeHelper.UtcNowUnspecified();
+            var userMessageEntity = dto.ToEntity(messageType, userTimestamp);
+            await _unitOfWork.ChatMessageRepository.CreateAsync(userMessageEntity).ConfigureAwait(false);
+            await _unitOfWork.SaveAsync().ConfigureAwait(false);
 
-            var timestamp = DateTimeHelper.UtcNowUnspecified();
-
-            await using var transaction = await _unitOfWork.BeginTransactionAsync().ConfigureAwait(false);
-
+            IReadOnlyList<RoutineRecommendation> routineCandidates;
             try
             {
-                var userMessageEntity = dto.ToEntity(messageType, timestamp);
-                await _unitOfWork.ChatMessageRepository.CreateAsync(userMessageEntity).ConfigureAwait(false);
-
-                var routineCandidates = await _routineRecommendationService
+                routineCandidates = await _routineRecommendationService
                     .RecommendAsync(
                         hasText ? normalizedContent : "Phân tích ảnh người dùng cung cấp",
                         user.skin_type,
                         topK: 5,
                         cancellationToken)
                     .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Routine recommendation failed for session {SessionId}", dto.SessionId);
+                return new ServiceResult(Const.ERROR_EXCEPTION, "Không thể xử lý yêu cầu do lỗi gợi ý routine.");
+            }
 
-                var prompt = BuildUserPrompt(
-                    normalizedContent,
-                    uploadedImageUrl,
-                    routineCandidates);
+            var prompt = BuildUserPrompt(
+                normalizedContent,
+                uploadedImageUrl,
+                routineCandidates);
 
-                string llmResponseJson;
-                try
-                {
-                    llmResponseJson = await _llmClient.ChatJsonAsync(
-                            SystemPrompt,
-                            prompt,
-                            JsonSchema,
-                            _openAiSettings.ChatModel,
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "OpenAI chat failed for session {SessionId}", dto.SessionId);
-                    throw;
-                }
+            string llmResponseJson;
+            try
+            {
+                llmResponseJson = await _llmClient.ChatJsonAsync(
+                        SystemPrompt,
+                        prompt,
+                        JsonSchema,
+                        _openAiSettings.ChatModel,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "OpenAI chat failed for session {SessionId}", dto.SessionId);
+                return new ServiceResult(Const.ERROR_EXCEPTION, "Không thể xử lý yêu cầu chat: AI không phản hồi.");
+            }
 
-                var responseObject = ParseResponse(llmResponseJson);
-                EnsureDisclaimer(responseObject);
-                var routineSuggestions = MapRoutineSuggestions(responseObject, routineCandidates);
-                if (routineSuggestions.Count == 0 && routineCandidates.Count > 0)
-                {
-                    routineSuggestions = CreateFallbackSuggestions(routineCandidates);
-                    InjectRoutineSuggestions(responseObject, routineSuggestions);
-                }
+            var responseObject = ParseResponse(llmResponseJson);
+            EnsureDisclaimer(responseObject);
+            var routineSuggestions = MapRoutineSuggestions(responseObject, routineCandidates);
+            if (routineSuggestions.Count == 0 && routineCandidates.Count > 0)
+            {
+                routineSuggestions = CreateFallbackSuggestions(routineCandidates);
+                InjectRoutineSuggestions(responseObject, routineSuggestions);
+            }
 
-                var assistantContent = BuildAssistantMessage(responseObject, routineSuggestions);
-                var confidence = ExtractConfidence(responseObject);
+            var assistantContent = BuildAssistantMessage(responseObject, routineSuggestions);
+            var confidence = ExtractConfidence(responseObject);
 
+            var analysisTimestamp = DateTimeHelper.UtcNowUnspecified();
+            var assistantTimestamp = DateTimeHelper.UtcNowUnspecified();
+            if (assistantTimestamp <= userTimestamp)
+            {
+                assistantTimestamp = userTimestamp.AddTicks(1);
+            }
+
+            await using var transaction = await _unitOfWork.BeginTransactionAsync().ConfigureAwait(false);
+
+            try
+            {
                 var analysis = new AIAnalysis
                 {
                     analysis_id = Guid.NewGuid(),
@@ -232,8 +247,8 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
                         WriteIndented = false
                     }),
                     confidence = confidence ?? 0.7,
-                    created_at = timestamp,
-                    updated_at = timestamp
+                    created_at = analysisTimestamp,
+                    updated_at = analysisTimestamp
                 };
                 await _unitOfWork.AIAnalysisRepository.CreateAsync(analysis).ConfigureAwait(false);
 
@@ -241,7 +256,7 @@ Chỉ trả về JSON hợp lệ theo schema đã cung cấp.
                     dto.SessionId,
                     assistantContent,
                     null,
-                    timestamp);
+                    assistantTimestamp);
                 await _unitOfWork.ChatMessageRepository.CreateAsync(assistantMessageEntity).ConfigureAwait(false);
 
                 await _unitOfWork.SaveAsync().ConfigureAwait(false);
